@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { analyzeTerraform } from '@phoenix/analyzer';
+import { analyzeTerraform, type TerraformAnalysis } from '@phoenix/analyzer';
 import type { RepositorySnapshot, RepositorySourceFile, ResolveSnapshotInput } from './index';
 
 export interface ChangeCaptureInput {
@@ -32,6 +32,8 @@ export interface RepositoryChange {
   proposed: RepositorySnapshot;
   changedFiles: ChangedFile[];
   changedResources: ChangedResource[];
+  baseAnalysis: TerraformAnalysis;
+  proposedAnalysis: TerraformAnalysis;
 }
 
 export async function captureRepositoryChange(
@@ -79,7 +81,7 @@ export async function captureRepositoryChange(
     return [];
   });
 
-  return { base, proposed, changedFiles, changedResources };
+  return { base, proposed, changedFiles, changedResources, baseAnalysis, proposedAnalysis };
 }
 
 function hash(content: string): string {

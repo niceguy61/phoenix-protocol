@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { GitHubRepositoryClient, type RepositorySnapshot, type RepositorySourceFile } from '@phoenix/repository';
+import { GitHubRepositoryClient, captureRepositoryChange, type RepositorySnapshot, type RepositorySourceFile } from '@phoenix/repository';
 import { evaluateNimAdvisory, summarizeNimEvaluation } from '@phoenix/ai-provider';
 import { analyzeTerraform, buildDependencyGraph, type TerraformAnalysis } from '@phoenix/analyzer';
 import {
@@ -29,7 +29,18 @@ const AnalysisInputSchema = z.object({
   awsProfile: AwsProfileSchema.default('default'),
 });
 
+const ChangeAnalysisInputSchema = z.object({
+  repositoryUrl: z.string().url(),
+  baseRef: z.string().min(1).max(256),
+  proposedRef: z.string().min(1).max(256),
+  terraformRoot: z.string().min(1).max(512),
+  awsProfile: AwsProfileSchema.default('default'),
+  region: z.literal('ap-northeast-2').default('ap-northeast-2'),
+});
+
 const RecoveryCreateInputSchema = z.object({ analysisId: z.string().min(1) });
+
+
 const RecoveryRunInputSchema = z.object({ scenario: z.enum(['success', 'plan-failure', 'apply-failure']).optional() });
 
 type AnalysisRecord = {
@@ -147,6 +158,18 @@ async function route(
       ? compareTerraformToAws(analyses.get(analysisId)!.analysis, inventory)
       : undefined;
     sendJson(response, 200, comparison ? { ...inventory, comparison } : inventory);
+    return;
+  }
+  if (method === 'POST' && path === '/api/change-analyses') {
+    const body = ChangeAnalysisInputSchema.safeParse(await readJson(request));
+    if (!body.success) return sendJson(response, 422, { error: { code: 'VALIDATION_ERROR', message: 'Invalid change analysis input' } });
+    if (!repositoryClient.getTerraformFiles) return sendJson(response, 501, { error: { code: 'SOURCE_UNAVAILABLE', message: 'Repository source reader is not configured' } });
+    if (body.data.awsProfile === 'sandbox' && process.env.PHOENIX_AWS_SANDBOX_ENABLED !== 'true') return sendJson(response, 403, { error: { code: 'SANDBOX_DISABLED', message: 'The sandbox profile is disabled' } });
+    const change = await captureRepositoryChange(repositoryClient as Parameters<typeof captureRepositoryChange>[0], body.data);
+    const reader = inventoryReader ?? createAwsSdkInventoryReader({ profile: body.data.awsProfile, region: body.data.region });
+    const inventory = await collectAwsInventory(reader, { profile: body.data.awsProfile, region: body.data.region });
+    const comparison = compareTerraformToAws(change.proposedAnalysis, inventory);
+    sendJson(response, 201, { change, inventory, comparison });
     return;
   }
   if (method === 'GET' && path === '/api/evaluations/nim') {
