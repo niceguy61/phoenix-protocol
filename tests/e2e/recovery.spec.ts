@@ -13,6 +13,7 @@ test('resolves a public repository and renders the pinned snapshot', async ({ pa
   await expect(page.getByRole('status')).toContainText('niceguy61/phoenix-protocol');
   await expect(page.getByLabel('Analysis result')).toContainText('resources');
   await expect(page.getByLabel('Analysis result')).toContainText('blueprint steps');
+  await expect(page.getByRole('heading', { name: 'NVIDIA NIM' })).toBeVisible();
   await page.getByRole('button', { name: 'Create mock recovery session' }).click();
   await page.getByRole('button', { name: 'Approve mock execution' }).click();
   await page.getByRole('button', { name: 'Run mock recovery' }).click();

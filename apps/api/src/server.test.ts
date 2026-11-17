@@ -34,6 +34,19 @@ describe('createApiServer', () => {
     expect(await response.json()).toEqual({ status: 'ok' });
   });
 
+  it('returns the NIM golden/adversarial evaluation summary without credentials', async () => {
+    const repositoryClient: RepositoryClient = { resolveSnapshot: async () => snapshot };
+    const server = createApiServer({ repositoryClient }).listen(0);
+    servers.push(server);
+
+    const response = await request(server, '/api/evaluations/nim');
+    const payload = await response.json();
+    expect(response.status).toBe(200);
+    expect(payload.model).toBe('z-ai/glm-5.3-flash');
+    expect(payload.summary.total).toBe(2);
+    expect(payload.summary.passed).toBe(false);
+    expect(JSON.stringify(payload)).not.toContain('NVIDIA_API_KEY');
+  });
   it('resolves a repository snapshot through the API contract', async () => {
     const repositoryClient: RepositoryClient = {
       resolveSnapshot: async () => snapshot,

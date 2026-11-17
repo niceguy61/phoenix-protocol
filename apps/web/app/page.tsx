@@ -19,6 +19,13 @@ type AnalysisResponse = {
   blueprint: { steps: Array<{ id: string; approvalRequired: boolean }> } | null;
 };
 
+type NimEvaluationResponse = {
+  model: string;
+  promptVersion: string;
+  results: Array<{ name: string; passed: boolean; violations: string[] }>;
+  summary: { passed: boolean; total: number; passedCount: number; failedCases: string[] };
+};
+
 type RecoveryResponse = {
   sessionId: string;
   session: { status: 'awaiting-approval' | 'approved' | 'running' | 'verifying' | 'failed' | 'cleaned' };
@@ -34,6 +41,7 @@ export default function HomePage() {
   const [terraformRoot, setTerraformRoot] = useState('.');
   const [awsProfile, setAwsProfile] = useState<'default' | 'sandbox'>('default');
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
+  const [nimEvaluation, setNimEvaluation] = useState<NimEvaluationResponse | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recovery, setRecovery] = useState<RecoveryResponse | null>(null);
@@ -110,6 +118,7 @@ export default function HomePage() {
     setError('');
     setAnalysis(null);
     setRecovery(null);
+    setNimEvaluation(null);
     setIsSubmitting(true);
     try {
       const response = await fetch(`${apiBase}/api/analyses`, {
@@ -123,6 +132,8 @@ export default function HomePage() {
         return;
       }
       setAnalysis(payload as AnalysisResponse);
+      const evaluationResponse = await fetch(`${apiBase}/api/evaluations/nim`);
+      if (evaluationResponse.ok) setNimEvaluation(await evaluationResponse.json() as NimEvaluationResponse);
     } catch {
       setError('API is unavailable. Start the Phoenix API on port 4000 and try again.');
     } finally {
@@ -267,6 +278,15 @@ export default function HomePage() {
               {(analysis.blueprint?.steps ?? []).map((step, index) => <li key={step.id}><span>{String(index + 1).padStart(2, '0')}</span><div><strong>{step.id}</strong><small>{step.approvalRequired ? 'Explicit approval required' : 'Preflight step'}</small></div></li>)}
             </ol>
           </article>
+          {nimEvaluation && (
+            <article className="panel detail-panel full-width">
+              <div className="panel-heading"><div><div className="section-label">AI contract evaluation</div><h2>NVIDIA NIM</h2></div><span className={`step-index ${nimEvaluation.summary.passed ? '' : 'muted'}`}>{nimEvaluation.summary.passedCount}/{nimEvaluation.summary.total} passed</span></div>
+              <ul className="verification-list">
+                {nimEvaluation.results.map((result) => <li key={result.name}><span>{result.name}</span><strong className={result.passed ? 'check-pass' : 'check-fail'}>{result.passed ? 'passed' : 'blocked'}</strong><small>{result.violations.join(' ') || 'Schema, grounding, separation, and safety checks passed.'}</small></li>)}
+              </ul>
+              <p className="detail-muted">Model: {nimEvaluation.model} · Prompt: {nimEvaluation.promptVersion}</p>
+            </article>
+          )}
           {recovery?.verification && (
             <article className="panel detail-panel full-width">
               <div className="panel-heading"><div><div className="section-label">Execution evidence</div><h2>Verification report</h2></div><span className={`step-index ${recovery.verification.recoveryVerified ? '' : 'muted'}`}>{recovery.verification.recoveryVerified ? 'VERIFIED' : 'INCOMPLETE'}</span></div>

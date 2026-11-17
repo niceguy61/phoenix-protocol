@@ -215,3 +215,5 @@ export class NvidiaNimClient {
     return content;
   }
 }
+
+export * from './evaluation';
