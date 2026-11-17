@@ -64,6 +64,7 @@ export const GraphSchema = z.object({
   nodes: z.array(GraphNodeSchema),
   edges: z.array(GraphEdgeSchema),
   unresolved: z.array(z.string()),
+  cycles: z.array(z.array(z.string())),
 });
 
 export const BlueprintStepSchema = z.object({

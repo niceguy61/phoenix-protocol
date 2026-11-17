@@ -51,9 +51,10 @@
   - Files likely touched: `packages/analyzer/*`, `fixtures/terraform/*`, `tests/analyzer/*`.
   - Estimated scope: Large; split parser and diagnostics if it exceeds five files.
 
-- [ ] **Task 6: Implement dependency graph generation**
+- [x] **Task 6: Implement dependency graph generation**
   - Acceptance: stable node IDs, dependent-to-prerequisite directed edges, external/unresolved states, cycle diagnostics, and JSON export exist.
   - Verify: `npm test -- dependency-graph`; graph snapshots match expected fixtures.
+  - Result: 3 graph tests pass; graph output provides stable sorted nodes, dependent-to-prerequisite edges, unresolved dependencies, and cycle paths.
   - Dependencies: Task 5.
   - Files likely touched: `packages/analyzer/graph/*`, `tests/graph/*`.
   - Estimated scope: Small.

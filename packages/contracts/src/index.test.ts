@@ -61,6 +61,7 @@ describe('shared contracts', () => {
       nodes: [{ id: 'aws_vpc.main', kind: 'resource', status: 'resolved' }],
       edges: [],
       unresolved: [],
+      cycles: [],
     });
 
     expect(snapshot.success).toBe(true);

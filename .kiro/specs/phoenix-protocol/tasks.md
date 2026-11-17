@@ -47,9 +47,10 @@
   - Result: 4 analyzer tests pass; 10 supported resources, dependencies, variables, module/data/output metadata, hardcoded-value diagnostics, unsupported resource diagnostics, invalid-HCL diagnostics, and fixtures are implemented.
   - Depends on: 2, 4.
 
-- [ ] **6. Implement the dependency graph**
+- [x] **6. Implement the dependency graph**
   - Acceptance: stable node IDs, directed edges, external/unresolved states, cycle diagnostics, and JSON export exist.
   - Verify: `npm test -- dependency-graph`.
+  - Result: 3 graph tests pass; graph output provides stable sorted nodes, dependent-to-prerequisite edges, unresolved dependencies, and cycle paths.
   - Depends on: 5.
 
 - [ ] **7. Implement recovery risk analysis**
