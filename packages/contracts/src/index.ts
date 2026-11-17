@@ -76,6 +76,8 @@ export const BlueprintStepSchema = z.object({
   approvalRequired: z.boolean(),
 });
 
+export type BlueprintStep = z.infer<typeof BlueprintStepSchema>;
+
 export const BlueprintSchema = z.object({
   steps: z.array(BlueprintStepSchema),
   externalDependencies: z.array(z.string()),

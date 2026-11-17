@@ -351,3 +351,5 @@ function uniqueDiagnostics(values: TerraformDiagnostic[]): TerraformDiagnostic[]
     return true;
   });
 }
+
+export * from './graph';

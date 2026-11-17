@@ -67,9 +67,10 @@
 
 ## Phase 3: Local/mock recovery proof
 
-- [ ] **8. Implement Recovery Blueprint and approval state**
+- [x] **8. Implement Recovery Blueprint and approval state**
   - Acceptance: steps are dependency ordered, have expected outcomes and inputs, and block apply before approval.
   - Verify: `npm test -- recovery-blueprint`.
+  - Result: 3 blueprint tests pass; prerequisites are ordered, unresolved/external dependencies are preserved, cyclic graphs are rejected, and `terraform-apply` requires approval.
   - Depends on: 3, 6, 7.
 
 - [ ] **9. Implement local/mock runner lifecycle**

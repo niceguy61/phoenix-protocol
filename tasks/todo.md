@@ -75,9 +75,10 @@
 
 ## Phase 3: Recovery proof path
 
-- [ ] **Task 8: Generate and approve Recovery Blueprints**
+- [x] **Task 8: Generate and approve Recovery Blueprints**
   - Acceptance: dependency-ordered steps include inputs, prerequisites, expected outcomes, verification plan, and approval state; apply steps are blocked before approval.
   - Verify: `npm test -- recovery-blueprint`; invalid order and missing outcome fixtures fail.
+  - Result: 3 blueprint tests pass; prerequisites are ordered, unresolved/external dependencies are preserved, cyclic graphs are rejected, and `terraform-apply` requires approval.
   - Dependencies: Tasks 3, 6, and 7.
   - Files likely touched: `packages/recovery/blueprint/*`, `tests/recovery-blueprint/*`.
   - Estimated scope: Medium.
