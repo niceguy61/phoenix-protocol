@@ -21,8 +21,8 @@ type AnalysisResponse = {
 type RecoveryResponse = {
   sessionId: string;
   session: { status: 'awaiting-approval' | 'approved' | 'running' | 'verifying' | 'failed' | 'cleaned' };
-  verification?: { recoveryVerified: boolean; requiredPassed: number; requiredTotal: number };
-  report?: { report: { status: string } };
+  verification?: { recoveryVerified: boolean; requiredPassed: number; requiredTotal: number; checks: Array<{ id: string; status: string; message: string; required: boolean }> };
+  report?: { report: { status: string; risks: Array<{ severity: string; summary: string }>; verification: { checks: Array<{ id: string; status: string }> } } ; json: string; html: string };
 };
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:4000';
@@ -221,6 +221,41 @@ export default function HomePage() {
           </div>
         </aside>
       </section>
+
+      {analysis && (
+        <section className="details-grid" aria-label="Analysis evidence details">
+          <article className="panel detail-panel">
+            <div className="panel-heading"><div><div className="section-label">Dependency evidence</div><h2>Graph</h2></div><span className="step-index">{analysis.graph.nodes.length} nodes</span></div>
+            <ul className="compact-list">
+              {analysis.graph.nodes.slice(0, 8).map((node) => <li key={String(node)}><span className="node-dot" />{String(node)}</li>)}
+            </ul>
+            {analysis.graph.unresolved.length > 0 && <p className="detail-warning">Unresolved: {analysis.graph.unresolved.join(', ')}</p>}
+            {analysis.graph.unresolved.length === 0 && <p className="detail-muted">No unresolved dependencies in this snapshot.</p>}
+          </article>
+          <article className="panel detail-panel">
+            <div className="panel-heading"><div><div className="section-label">Recovery blockers</div><h2>Risk findings</h2></div><span className="step-index">{analysis.risks.findings.length}</span></div>
+            <ul className="compact-list risk-list">
+              {analysis.risks.findings.slice(0, 5).map((finding, index) => <li key={`${finding.summary}-${index}`}><span className={`severity severity-${finding.severity}`}>{finding.severity}</span><span>{finding.summary}</span></li>)}
+            </ul>
+            {analysis.risks.findings.length === 0 && <p className="detail-muted">No deterministic findings returned.</p>}
+          </article>
+          <article className="panel detail-panel full-width">
+            <div className="panel-heading"><div><div className="section-label">Ordered recovery plan</div><h2>Blueprint</h2></div><span className="step-index">{analysis.blueprint?.steps.length ?? 0} steps</span></div>
+            <ol className="blueprint-list">
+              {(analysis.blueprint?.steps ?? []).map((step, index) => <li key={step.id}><span>{String(index + 1).padStart(2, '0')}</span><div><strong>{step.id}</strong><small>{step.approvalRequired ? 'Explicit approval required' : 'Preflight step'}</small></div></li>)}
+            </ol>
+          </article>
+          {recovery?.verification && (
+            <article className="panel detail-panel full-width">
+              <div className="panel-heading"><div><div className="section-label">Execution evidence</div><h2>Verification report</h2></div><span className={`step-index ${recovery.verification.recoveryVerified ? '' : 'muted'}`}>{recovery.verification.recoveryVerified ? 'VERIFIED' : 'INCOMPLETE'}</span></div>
+              <ul className="verification-list">
+                {recovery.verification.checks.map((check) => <li key={check.id}><span>{check.id}</span><strong className={check.status === 'passed' ? 'check-pass' : 'check-fail'}>{check.status}</strong><small>{check.message}</small></li>)}
+              </ul>
+              {recovery.report && <p className="detail-muted">Canonical report status: {recovery.report.report.status}</p>}
+            </article>
+          )}
+        </section>
+      )}
 
       <footer className="footer-line">
         <span>Built with Kiro + Kiro Crew</span>

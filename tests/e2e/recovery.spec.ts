@@ -16,6 +16,8 @@ test('resolves a public repository and renders the pinned snapshot', async ({ pa
   await page.getByRole('button', { name: 'Approve mock execution' }).click();
   await page.getByRole('button', { name: 'Run mock recovery' }).click();
   await expect(page.getByText('RECOVERY VERIFIED')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: 'Verification report' })).toBeVisible();
+  await expect(page.getByText('terraform-apply').first()).toBeVisible();
 });
 
 test('renders an actionable API error state', async ({ page }) => {
