@@ -35,7 +35,10 @@ describe('createApiServer', () => {
   });
 
   it('resolves a repository snapshot through the API contract', async () => {
-    const repositoryClient: RepositoryClient = { resolveSnapshot: async () => snapshot };
+    const repositoryClient: RepositoryClient = {
+      resolveSnapshot: async () => snapshot,
+      getTerraformFiles: async () => [{ path: 'main.tf', content: 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }' }],
+    };
     const server = createApiServer({ repositoryClient }).listen(0);
     servers.push(server);
 
@@ -46,7 +49,10 @@ describe('createApiServer', () => {
     });
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual(expect.objectContaining({ status: 'snapshot-resolved', snapshot }));
+    const payload = await response.json();
+    expect(payload).toEqual(expect.objectContaining({ status: 'analysis-complete', snapshot }));
+    expect(payload.graph.nodes).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'aws_vpc.main' })]));
+    expect(payload.blueprint.steps).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'terraform-apply', approvalRequired: true })]));
   });
 
   it('returns structured validation errors for invalid analysis input', async () => {
