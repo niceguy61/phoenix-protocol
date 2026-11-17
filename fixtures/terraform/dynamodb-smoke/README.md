@@ -17,7 +17,7 @@ Run from this directory after copying `terraform.tfvars.example` to `terraform.t
 
 ```powershell
 $env:AWS_PROFILE = "default"
-terraform plan -var-file=terraform.tfvars
+terraform plan -var-file=".\terraform.tfvars"
 ```
 
 ## Create and verify
