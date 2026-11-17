@@ -131,3 +131,11 @@ button:disabled { cursor: wait; opacity: 0.65; }
 
 .node-status { margin-left: auto; color: var(--dim); font-family: inherit; font-size: 0.58rem; }
 .detail-inputs { margin: 18px 0 0; color: var(--accent); font-size: 0.72rem; line-height: 1.5; }
+
+.live-scan-button { margin-top: 12px; }
+.inventory-card { display: grid; gap: 12px; margin-top: 14px; border: 1px solid var(--line); background: var(--surface-raised); padding: 14px; }
+.inventory-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.inventory-metrics div { display: grid; gap: 3px; border: 1px solid var(--line); padding: 8px; }
+.inventory-metrics strong { color: var(--text); font-size: 1rem; }
+.inventory-metrics span { color: var(--dim); font-size: 0.55rem; overflow-wrap: anywhere; text-transform: uppercase; }
+@media (max-width: 520px) { .inventory-metrics { grid-template-columns: repeat(2, 1fr); } }

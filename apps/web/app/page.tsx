@@ -19,6 +19,14 @@ type AnalysisResponse = {
   blueprint: { steps: Array<{ id: string; approvalRequired: boolean }> } | null;
 };
 
+type AwsInventoryResponse = {
+  profile: 'default' | 'sandbox';
+  region: string;
+  accountId: string;
+  collectedAt: string;
+  resources: Array<{ id: string; kind: string; status: string; name?: string; metadata?: Record<string, string> }>;
+};
+
 type NimEvaluationResponse = {
   model: string;
   promptVersion: string;
@@ -41,11 +49,24 @@ export default function HomePage() {
   const [terraformRoot, setTerraformRoot] = useState('.');
   const [awsProfile, setAwsProfile] = useState<'default' | 'sandbox'>('default');
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
+  const [inventory, setInventory] = useState<AwsInventoryResponse | null>(null);
   const [nimEvaluation, setNimEvaluation] = useState<NimEvaluationResponse | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recovery, setRecovery] = useState<RecoveryResponse | null>(null);
   const [isRecoveryActionPending, setIsRecoveryActionPending] = useState(false);
+
+  async function scanAwsInventory() {
+    setError('');
+    try {
+      const response = await fetch(`${apiBase}/api/aws/inventory?profile=${awsProfile}&region=ap-northeast-2`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message ?? 'AWS inventory scan failed.');
+      setInventory(payload as AwsInventoryResponse);
+    } catch (scanError) {
+      setError(scanError instanceof Error ? scanError.message : 'AWS inventory scan failed.');
+    }
+  }
 
   async function createRecoverySession() {
     if (!analysis) return;
@@ -118,6 +139,7 @@ export default function HomePage() {
     setError('');
     setAnalysis(null);
     setRecovery(null);
+    setInventory(null);
     setNimEvaluation(null);
     setIsSubmitting(true);
     try {
@@ -203,6 +225,14 @@ export default function HomePage() {
               <span aria-hidden="true">→</span>
             </button>
           </form>
+          <button className="secondary-button live-scan-button" type="button" onClick={scanAwsInventory}>Scan live AWS inventory</button>
+          {inventory && (
+            <div className="inventory-card" role="status" aria-label="Live AWS inventory">
+              <div className="recovery-card-header"><span>Live AWS inventory</span><strong>{inventory.profile} · {inventory.region}</strong></div>
+              <div className="inventory-metrics">{['vpc', 'ec2-instance', 'ecs-cluster', 'load-balancer', 'rds-instance', 's3-bucket', 'dynamodb-table', 'lambda-function'].map((kind) => <div key={kind}><strong>{inventory.resources.filter((resource) => resource.kind === kind).length}</strong><span>{kind}</span></div>)}</div>
+              <small className="field-hint">Account: {inventory.accountId} · Read-only snapshot at {new Date(inventory.collectedAt).toLocaleTimeString()}</small>
+            </div>
+          )}
           {error && <p className="message error" role="alert">{error}</p>}
           {analysis && (
             <>
