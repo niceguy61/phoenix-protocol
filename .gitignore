@@ -31,3 +31,7 @@ Thumbs.db
 
 # Kiro Task Runner transient progress
 tasks/TASK_PROGRESS.md
+
+# Playwright runtime artifacts
+playwright-report/
+test-results/
