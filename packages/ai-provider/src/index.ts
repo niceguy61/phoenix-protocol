@@ -176,11 +176,20 @@ export class NvidiaNimClient {
           },
         };
       } catch (error) {
-        if (error instanceof NimRequestError || error instanceof NimInvalidResponseError) throw error;
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new NimRequestError('NVIDIA NIM request timed out');
+        if (error instanceof NimInvalidResponseError) throw error;
+
+        const requestError = error instanceof NimRequestError
+          ? error
+          : error instanceof DOMException && error.name === 'AbortError'
+            ? new NimRequestError('NVIDIA NIM request timed out')
+            : new NimRequestError('NVIDIA NIM request failed without exposing the underlying error');
+        const retryable = requestError.status === undefined || this.isRetryable(requestError.status);
+        if (retryable && attempt < this.maxRetries) {
+          lastError = requestError;
+          await this.sleep(this.retryDelayMs * 2 ** attempt);
+          continue;
         }
-        throw new NimRequestError('NVIDIA NIM request failed without exposing the underlying error');
+        throw requestError;
       } finally {
         clearTimeout(timeout);
       }

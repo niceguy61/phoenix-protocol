@@ -90,6 +90,47 @@ describe('NvidiaNimClient', () => {
     );
   });
 
+  it('retries transient 5xx responses with bounded backoff', async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn().mockImplementation(() => {
+      calls += 1;
+      return calls === 1
+        ? Promise.resolve(response({ error: 'temporary' }, { status: 503 }))
+        : Promise.resolve(response({ choices: [{ message: { content: '{"answer":"recovered"}' } }] }));
+    });
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const client = new NvidiaNimClient({
+      baseUrl: 'https://integrate.api.nvidia.com/v1',
+      model: 'z-ai/glm-5.3-flash',
+      apiKey: 'test-key',
+      fetchImpl,
+      maxRetries: 1,
+      sleep,
+    });
+
+    const result = await client.completeJson({ promptVersion: 'retry-v1', user: 'Return JSON.', schema: resultSchema });
+
+    expect(result.data).toEqual({ answer: 'recovered' });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries transient network failures but does not retry schema failures', async () => {
+    const fetchImpl = vi.fn()
+      .mockRejectedValueOnce(new TypeError('socket closed'))
+      .mockResolvedValueOnce(response({ choices: [{ message: { content: '{"answer":"recovered"}' } }] }));
+    const client = new NvidiaNimClient({
+      baseUrl: 'https://integrate.api.nvidia.com/v1',
+      model: 'z-ai/glm-5.3-flash',
+      apiKey: 'test-key',
+      fetchImpl,
+      maxRetries: 1,
+      sleep: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await expect(client.completeJson({ promptVersion: 'network-retry-v1', user: 'Return JSON.', schema: resultSchema })).resolves.toMatchObject({ data: { answer: 'recovered' } });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
   it('redacts credential-like values before they reach logs', () => {
     expect(redactSensitive('token=abc password=secret Authorization: Bearer xyz')).toBe(
       'token=[REDACTED] password=[REDACTED] Authorization: Bearer [REDACTED]',
