@@ -124,6 +124,26 @@ describe('createApiServer', () => {
     expect(run.verification.recoveryVerified).toBe(true);
     expect(run.report.report.status).toBe('recovery-verified');
   });
+  it('analyzes a local Terraform folder with the same validation pipeline', async () => {
+    const repositoryClient: RepositoryClient = { resolveSnapshot: async () => snapshot };
+    const server = createApiServer({ repositoryClient }).listen(0);
+    servers.push(server);
+
+    const response = await request(server, '/api/analyses/local', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sourceName: 'local-demo',
+        awsProfile: 'default',
+        files: [{ path: 'main.tf', content: 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }' }],
+      }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(payload.snapshot.repository).toBe('local/local-demo');
+    expect(payload.analysis.resources).toEqual(expect.arrayContaining([expect.objectContaining({ address: 'aws_vpc.main' })]));
+  });
   it('returns structured validation errors for invalid analysis input', async () => {
     const repositoryClient: RepositoryClient = { resolveSnapshot: async () => snapshot };
     const server = createApiServer({ repositoryClient }).listen(0);

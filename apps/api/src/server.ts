@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { GitHubRepositoryClient, captureRepositoryChange, type RepositorySnapshot, type RepositorySourceFile } from '@phoenix/repository';
 import { evaluateNimAdvisory, summarizeNimEvaluation } from '@phoenix/ai-provider';
@@ -29,6 +29,11 @@ const AnalysisInputSchema = z.object({
   awsProfile: AwsProfileSchema.default('default'),
 });
 
+const LocalAnalysisInputSchema = z.object({
+  sourceName: z.string().min(1).max(128),
+  awsProfile: AwsProfileSchema.default('default'),
+  files: z.array(z.object({ path: z.string().min(1).max(512), content: z.string().max(2_000_000) })).min(1).max(500),
+});
 const ChangeAnalysisInputSchema = z.object({
   repositoryUrl: z.string().url(),
   baseRef: z.string().min(1).max(256),
@@ -198,6 +203,31 @@ async function route(
     return;
   }
 
+  if (method === 'POST' && path === '/api/analyses/local') {
+    const body = LocalAnalysisInputSchema.safeParse(await readJson(request));
+    if (!body.success) return sendJson(response, 422, { error: { code: 'VALIDATION_ERROR', message: 'Invalid local Terraform input', details: body.error.flatten() } });
+    const files = body.data.files.filter((file) => (file.path.endsWith('.tf') || file.path.endsWith('.tf.json')) && !file.path.split('/').includes('..'));
+    if (files.length === 0) return sendJson(response, 422, { error: { code: 'VALIDATION_ERROR', message: 'No safe Terraform files were provided' } });
+    const commitSha = createHash('sha256').update(JSON.stringify(files.sort((left, right) => left.path.localeCompare(right.path)))).digest('hex');
+    const snapshot: RepositorySnapshot = {
+      repository: `local/${body.data.sourceName}`,
+      ref: 'local',
+      commitSha,
+      terraformRoot: '.',
+      snapshotId: `local-${commitSha.slice(0, 12)}`,
+      archiveUrl: '',
+    };
+    const terraformAnalysis = await analyzeTerraform(files);
+    const graph = buildDependencyGraph(terraformAnalysis);
+    const risks = await analyzeRecoveryRisks(terraformAnalysis, { sessionId: randomUUID(), observedAt: new Date().toISOString() });
+    let blueprint: AnalysisRecord['blueprint'] = null;
+    let blueprintError: string | undefined;
+    try { blueprint = createRecoveryBlueprint(graph, risks.findings); } catch (error) { blueprintError = error instanceof Error ? error.message : 'Recovery Blueprint could not be generated'; }
+    const analysis: AnalysisRecord = { analysisId: randomUUID(), status: 'analysis-complete', awsProfile: body.data.awsProfile, snapshot, analysis: terraformAnalysis, graph, risks, blueprint, ...(blueprintError ? { blueprintError } : {}) };
+    analyses.set(analysis.analysisId, analysis);
+    sendJson(response, 201, analysis);
+    return;
+  }
   if (method === 'POST' && path === '/api/analyses') {
     const body = AnalysisInputSchema.safeParse(await readJson(request));
     if (!body.success) {

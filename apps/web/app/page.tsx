@@ -47,6 +47,8 @@ const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:4000';
 
 export default function HomePage() {
   const [repositoryUrl, setRepositoryUrl] = useState('https://github.com/niceguy61/phoenix-protocol');
+  const [sourceMode, setSourceMode] = useState<'github' | 'local'>('github');
+  const [localFiles, setLocalFiles] = useState<File[]>([]);
   const [ref, setRef] = useState('feature/initial-scaffold');
   const [terraformRoot, setTerraformRoot] = useState('.');
   const [awsProfile, setAwsProfile] = useState<'default' | 'sandbox'>('default');
@@ -145,10 +147,19 @@ export default function HomePage() {
     setNimEvaluation(null);
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${apiBase}/api/analyses`, {
+      const localSourceFiles = await Promise.all(localFiles.map(async (file) => ({
+        path: (file as File & { webkitRelativePath?: string }).webkitRelativePath ?? file.name,
+        content: await file.text(),
+      })));
+      const sourceName = localSourceFiles[0]?.path.split('/')[0] ?? 'local-folder';
+      const endpoint = sourceMode === 'local' ? `${apiBase}/api/analyses/local` : `${apiBase}/api/analyses`;
+      const body = sourceMode === 'local'
+        ? { sourceName, awsProfile, files: localSourceFiles }
+        : { repositoryUrl, ref, terraformRoot, awsProfile };
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ repositoryUrl, ref, terraformRoot, awsProfile }),
+        body: JSON.stringify(body),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -201,6 +212,16 @@ export default function HomePage() {
           <p className="panel-copy">The API resolves the selected ref to a commit SHA before analysis begins.</p>
           <form onSubmit={submitAnalysis} className="source-form">
             <label>
+              Source mode
+              <select value={sourceMode} onChange={(event) => setSourceMode(event.target.value as 'github' | 'local')}>
+                <option value="github">Public GitHub repository</option>
+                <option value="local">Local Terraform folder</option>
+              </select>
+              <small className="field-hint">The same analysis, graph, risk, and blueprint pipeline handles both sources.</small>
+            </label>
+            {sourceMode === 'github' ? (
+              <>
+            <label>
               GitHub repository
               <input value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} type="url" required />
             </label>
@@ -214,6 +235,14 @@ export default function HomePage() {
                 <input value={terraformRoot} onChange={(event) => setTerraformRoot(event.target.value)} required />
               </label>
             </div>
+              </>
+            ) : (
+              <label>
+                Terraform folder
+                <input type="file" multiple {...({ webkitdirectory: '' } as Record<string, string>)} onChange={(event) => setLocalFiles(Array.from(event.target.files ?? []))} />
+                <small className="field-hint">{localFiles.length ? `${localFiles.length} file(s) selected` : 'Select a folder containing .tf files.'}</small>
+              </label>
+            )}
             <label>
               AWS test profile
               <select value={awsProfile} onChange={(event) => setAwsProfile(event.target.value as 'default' | 'sandbox')}>

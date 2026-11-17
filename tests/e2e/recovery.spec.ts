@@ -28,7 +28,7 @@ test('resolves a public repository and renders the pinned snapshot', async ({ pa
 
 test('renders an actionable API error state', async ({ page }) => {
   await page.goto('/');
-  await page.getByLabel('GitHub repository').fill('https://example.invalid/not-a-repository');
+  await page.getByRole('textbox', { name: 'GitHub repository' }).fill('https://example.invalid/not-a-repository');
   await page.getByRole('button', { name: 'Resolve source snapshot' }).click();
 
   await expect(page.locator('.message.error')).toContainText('public GitHub repository', { timeout: 10_000 });

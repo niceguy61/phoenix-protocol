@@ -7,7 +7,7 @@ export default defineConfig({
   fullyParallel: true,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3010',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -20,8 +20,8 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: 'npm run dev --workspace @phoenix/web',
-      url: 'http://localhost:3000',
+      command: 'npm run dev --workspace @phoenix/web -- --hostname 127.0.0.1 --port 3010',
+      url: 'http://localhost:3010',
       reuseExistingServer: true,
       timeout: 60_000,
     },
