@@ -83,16 +83,18 @@
   - Files likely touched: `packages/recovery/blueprint/*`, `tests/recovery-blueprint/*`.
   - Estimated scope: Medium.
 
-- [ ] **Task 9: Implement the local/mock recovery runner**
+- [x] **Task 9: Implement the local/mock recovery runner**
   - Acceptance: lifecycle covers approval, run, failure, cleanup, and cleanup failure; logs/resources/results connect to a session; no AWS call is made.
   - Verify: `npm test -- recovery-runner`; `npm run recovery:mock -- --fixture demo-blocker`.
+  - Result: 4 runner tests pass; approval gate, plan/apply failures, partial resources, cleaned, and cleanup-failed states are preserved.
   - Dependencies: Tasks 2 and 8.
   - Files likely touched: `packages/recovery/runner/*`, `fixtures/recovery/*`, `tests/recovery-runner/*`.
   - Estimated scope: Medium.
 
-- [ ] **Task 10: Implement verification checks**
+- [x] **Task 10: Implement verification checks**
   - Acceptance: infrastructure and application layers are separate; required/optional, passed/failed/skipped/unverified states are preserved; DB check is configurable.
   - Verify: `npm test -- verification`; `npm run verify:mock -- --session <id>`.
+  - Result: 4 verification tests pass; apply success cannot bypass application failure, skipped/unverified states remain visible, and thrown check errors do not stop later checks.
   - Dependencies: Task 9.
   - Files likely touched: `packages/recovery/verification/*`, `tests/verification/*`.
   - Estimated scope: Medium.

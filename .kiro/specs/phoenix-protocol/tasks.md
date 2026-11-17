@@ -73,14 +73,16 @@
   - Result: 3 blueprint tests pass; prerequisites are ordered, unresolved/external dependencies are preserved, cyclic graphs are rejected, and `terraform-apply` requires approval.
   - Depends on: 3, 6, 7.
 
-- [ ] **9. Implement local/mock runner lifecycle**
+- [x] **9. Implement local/mock runner lifecycle**
   - Acceptance: approval, execution, failure, cleanup, and cleanup-failed states are represented with session evidence; no AWS calls occur.
   - Verify: `npm test -- recovery-runner`; `npm run recovery:mock -- --fixture demo-blocker`.
+  - Result: 4 runner tests pass; approval gate, plan/apply failures, partial resources, cleaned, and cleanup-failed states are preserved.
   - Depends on: 2, 8.
 
-- [ ] **10. Implement verification**
+- [x] **10. Implement verification**
   - Acceptance: infrastructure/application layers, required/optional status, passed/failed/skipped/unverified states, and configured DB connectivity work.
   - Verify: `npm test -- verification`; `npm run verify:mock -- --session <id>`.
+  - Result: 4 verification tests pass; apply success cannot bypass application failure, skipped/unverified states remain visible, and thrown check errors do not stop later checks.
   - Depends on: 9.
 
 - [ ] **11. Implement evidence reports**

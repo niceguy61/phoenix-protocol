@@ -104,6 +104,8 @@ export const ExecutionSessionSchema = z.object({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
+export type ExecutionSession = z.infer<typeof ExecutionSessionSchema>;
+
 export const VerificationCheckSchema = z.object({
   id: z.string().min(1),
   layer: z.enum(['infrastructure', 'application']),
