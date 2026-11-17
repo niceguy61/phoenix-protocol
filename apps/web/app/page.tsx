@@ -5,6 +5,7 @@ import { FormEvent, useState } from 'react';
 type AnalysisResponse = {
   analysisId: string;
   status: 'analysis-complete';
+  awsProfile: 'default' | 'sandbox';
   snapshot: {
     repository: string;
     ref: string;
@@ -31,6 +32,7 @@ export default function HomePage() {
   const [repositoryUrl, setRepositoryUrl] = useState('https://github.com/niceguy61/phoenix-protocol');
   const [ref, setRef] = useState('feature/initial-scaffold');
   const [terraformRoot, setTerraformRoot] = useState('.');
+  const [awsProfile, setAwsProfile] = useState<'default' | 'sandbox'>('default');
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +115,7 @@ export default function HomePage() {
       const response = await fetch(`${apiBase}/api/analyses`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ repositoryUrl, ref, terraformRoot }),
+        body: JSON.stringify({ repositoryUrl, ref, terraformRoot, awsProfile }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -177,6 +179,14 @@ export default function HomePage() {
                 <input value={terraformRoot} onChange={(event) => setTerraformRoot(event.target.value)} required />
               </label>
             </div>
+            <label>
+              AWS test profile
+              <select value={awsProfile} onChange={(event) => setAwsProfile(event.target.value as 'default' | 'sandbox')}>
+                <option value="default">default · SSO profile</option>
+                <option value="sandbox">sandbox · gated</option>
+              </select>
+              <small className="field-hint">Profile name only. Credentials never enter browser state.</small>
+            </label>
             <button className="primary-button" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Resolving commit…' : 'Resolve source snapshot'}
               <span aria-hidden="true">→</span>
@@ -187,7 +197,7 @@ export default function HomePage() {
             <>
               <div className="message success" role="status">
                 <strong>Snapshot pinned.</strong>
-                <span>{analysis.snapshot.repository} · {analysis.snapshot.commitSha.slice(0, 12)} · {analysis.snapshot.terraformRoot}</span>
+                <span>{analysis.snapshot.repository} · {analysis.snapshot.commitSha.slice(0, 12)} · {analysis.snapshot.terraformRoot} · AWS profile: {analysis.awsProfile}</span>
               </div>
               <div className="analysis-overview" aria-label="Analysis result">
                 <div><strong>{analysis.analysis.resources.length}</strong><span>resources</span></div>

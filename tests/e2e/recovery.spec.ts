@@ -5,6 +5,7 @@ test('resolves a public repository and renders the pinned snapshot', async ({ pa
 
   await expect(page.getByRole('heading', { name: 'Prove your infrastructure can rise again.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Source snapshot' })).toBeVisible();
+  await expect(page.getByLabel('AWS test profile')).toHaveValue('default');
 
   await page.getByRole('button', { name: 'Resolve source snapshot' }).click();
 

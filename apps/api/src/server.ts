@@ -13,10 +13,15 @@ import {
   type VerificationResult,
 } from '@phoenix/recovery';
 
+const AwsProfileSchema = z.enum(['default', 'sandbox']);
+
+type AwsProfile = z.infer<typeof AwsProfileSchema>;
+
 const AnalysisInputSchema = z.object({
   repositoryUrl: z.string().url(),
   ref: z.string().min(1).max(256),
   terraformRoot: z.string().min(1).max(512),
+  awsProfile: AwsProfileSchema.default('default'),
 });
 
 const RecoveryCreateInputSchema = z.object({ analysisId: z.string().min(1) });
@@ -25,6 +30,7 @@ const RecoveryRunInputSchema = z.object({ scenario: z.enum(['success', 'plan-fai
 type AnalysisRecord = {
   analysisId: string;
   status: 'analysis-complete';
+  awsProfile: AwsProfile;
   snapshot: RepositorySnapshot;
   analysis: TerraformAnalysis;
   graph: ReturnType<typeof buildDependencyGraph>;
@@ -98,6 +104,17 @@ async function route(
     return;
   }
 
+  if (method === 'GET' && path === '/api/aws/profiles') {
+    const sandboxEnabled = process.env.PHOENIX_AWS_SANDBOX_ENABLED === 'true';
+    sendJson(response, 200, {
+      profiles: [
+        { name: 'default', status: 'configured' },
+        { name: 'sandbox', status: sandboxEnabled ? 'configured' : 'disabled' },
+      ],
+    });
+    return;
+  }
+
   if (method === 'GET' && path === '/api/health') {
     sendJson(response, 200, { status: 'ok' });
     return;
@@ -111,7 +128,8 @@ async function route(
       });
       return;
     }
-    const snapshot = await repositoryClient.resolveSnapshot(body.data);
+    const { awsProfile, ...snapshotInput } = body.data;
+    const snapshot = await repositoryClient.resolveSnapshot(snapshotInput);
     const files = repositoryClient.getTerraformFiles ? await repositoryClient.getTerraformFiles(snapshot) : [];
     const terraformAnalysis = await analyzeTerraform(files);
     const graph = buildDependencyGraph(terraformAnalysis);
@@ -130,6 +148,7 @@ async function route(
     const analysis: AnalysisRecord = {
       analysisId: randomUUID(),
       status: 'analysis-complete',
+      awsProfile,
       snapshot,
       analysis: terraformAnalysis,
       graph,
