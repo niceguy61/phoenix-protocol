@@ -14,7 +14,7 @@ type AnalysisResponse = {
     snapshotId: string;
   };
   analysis: { resources: unknown[]; filesAnalyzed: string[]; diagnostics: unknown[] };
-  graph: { nodes: unknown[]; unresolved: string[]; cycles: string[] };
+  graph: { nodes: Array<{ id: string; kind: string; status: string }>; unresolved: string[]; externalInputs?: string[]; cycles: string[] };
   risks: { findings: Array<{ severity: string; summary: string }>; diagnostics: string[] };
   blueprint: { steps: Array<{ id: string; approvalRequired: boolean }> } | null;
 };
@@ -212,7 +212,7 @@ export default function HomePage() {
               </div>
               <div className="analysis-overview" aria-label="Analysis result">
                 <div><strong>{analysis.analysis.resources.length}</strong><span>resources</span></div>
-                <div><strong>{analysis.graph.unresolved.length}</strong><span>unresolved</span></div>
+                <div><strong>{analysis.graph.externalInputs?.length ?? 0}</strong><span>external inputs</span></div>
                 <div><strong>{analysis.risks.findings.length}</strong><span>risk findings</span></div>
                 <div><strong>{analysis.blueprint?.steps.length ?? 0}</strong><span>blueprint steps</span></div>
               </div>
@@ -260,9 +260,10 @@ export default function HomePage() {
           <article className="panel detail-panel">
             <div className="panel-heading"><div><div className="section-label">Dependency evidence</div><h2>Graph</h2></div><span className="step-index">{analysis.graph.nodes.length} nodes</span></div>
             <ul className="compact-list">
-              {analysis.graph.nodes.slice(0, 8).map((node) => <li key={String(node)}><span className="node-dot" />{String(node)}</li>)}
+              {analysis.graph.nodes.slice(0, 8).map((node) => <li key={node.id}><span className="node-dot" /><span>{node.id}</span><small className="node-status">{node.kind} · {node.status}</small></li>)}
             </ul>
-            {analysis.graph.unresolved.length > 0 && <p className="detail-warning">Unresolved: {analysis.graph.unresolved.join(', ')}</p>}
+            {analysis.graph.externalInputs && analysis.graph.externalInputs.length > 0 && <p className="detail-inputs">External inputs: {analysis.graph.externalInputs.join(', ')}</p>}
+            {analysis.graph.unresolved.length > 0 && <p className="detail-warning">Unresolved resources: {analysis.graph.unresolved.join(', ')}</p>}
             {analysis.graph.unresolved.length === 0 && <p className="detail-muted">No unresolved dependencies in this snapshot.</p>}
           </article>
           <article className="panel detail-panel">
