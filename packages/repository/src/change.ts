@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { analyzeTerraform } from '@phoenix/analyzer';
 import type { RepositorySnapshot, RepositorySourceFile, ResolveSnapshotInput } from './index';
 
 export interface ChangeCaptureInput {
@@ -20,10 +21,17 @@ export interface ChangedFile {
   proposedHash?: string;
 }
 
+export interface ChangedResource {
+  address: string;
+  status: 'added' | 'modified' | 'deleted';
+  type: string;
+}
+
 export interface RepositoryChange {
   base: RepositorySnapshot;
   proposed: RepositorySnapshot;
   changedFiles: ChangedFile[];
+  changedResources: ChangedResource[];
 }
 
 export async function captureRepositoryChange(
@@ -52,7 +60,26 @@ export async function captureRepositoryChange(
     return [];
   });
 
-  return { base, proposed, changedFiles };
+  const changedFilePaths = new Set(changedFiles.map((file) => file.path));
+  const [baseAnalysis, proposedAnalysis] = await Promise.all([
+    analyzeTerraform(baseFiles),
+    analyzeTerraform(proposedFiles),
+  ]);
+  const baseResources = new Map(baseAnalysis.resources.map((resource) => [resource.address, resource]));
+  const proposedResources = new Map(proposedAnalysis.resources.map((resource) => [resource.address, resource]));
+  const resourceAddresses = [...new Set([...baseResources.keys(), ...proposedResources.keys()])].sort();
+  const changedResources = resourceAddresses.flatMap((address): ChangedResource[] => {
+    const baseResource = baseResources.get(address);
+    const proposedResource = proposedResources.get(address);
+    if (!baseResource && proposedResource) return [{ address, status: 'added', type: proposedResource.type }];
+    if (baseResource && !proposedResource) return [{ address, status: 'deleted', type: baseResource.type }];
+    if (changedFilePaths.has(baseResource?.path ?? '') || changedFilePaths.has(proposedResource?.path ?? '') || JSON.stringify(baseResource?.attributes) !== JSON.stringify(proposedResource?.attributes)) {
+      return [{ address, status: 'modified', type: proposedResource?.type ?? baseResource?.type ?? 'unknown' }];
+    }
+    return [];
+  });
+
+  return { base, proposed, changedFiles, changedResources };
 }
 
 function hash(content: string): string {

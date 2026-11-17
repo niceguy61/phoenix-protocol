@@ -12,7 +12,7 @@ describe('captureRepositoryChange', () => {
       resolveSnapshot: async (input) => input.ref === 'main' ? snapshots.base : snapshots.proposed,
       getTerraformFiles: async (snapshot) => snapshot.snapshotId === 'base'
         ? [{ path: 'main.tf', content: 'resource "aws_vpc" "main" {}' }, { path: 'old.tf', content: 'resource "aws_s3_bucket" "old" {}' }]
-        : [{ path: 'main.tf', content: 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }' }, { path: 'new.tf', content: 'resource "aws_lambda_function" "new" {}' }],
+        : [{ path: 'main.tf', content: 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }' }, { path: 'new.tf', content: 'resource "aws_ecs_service" "new" {}' }],
     };
 
     const change = await captureRepositoryChange(reader, {
@@ -30,6 +30,11 @@ describe('captureRepositoryChange', () => {
       expect.objectContaining({ path: 'old.tf', status: 'deleted' }),
     ]);
     expect(change.changedFiles.every((file) => file.baseHash || file.proposedHash)).toBe(true);
+    expect(change.changedResources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ address: 'aws_vpc.main', status: 'modified' }),
+      expect.objectContaining({ address: 'aws_s3_bucket.old', status: 'deleted' }),
+      expect.objectContaining({ address: 'aws_ecs_service.new', status: 'added' }),
+    ]));
   });
 
   it('rejects a change where base and proposed commits are identical', async () => {
