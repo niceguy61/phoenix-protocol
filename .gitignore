@@ -35,3 +35,8 @@ tasks/TASK_PROGRESS.md
 # Playwright runtime artifacts
 playwright-report/
 test-results/
+
+# Terraform variable files may contain environment-specific values
+*.tfvars
+*.tfvars.json
+!*.tfvars.example

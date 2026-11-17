@@ -1,0 +1,3 @@
+# Copy this file to terraform.tfvars and replace the unique suffix.
+aws_region = "ap-northeast-2"
+table_name = "phoenix-smoke-tf-20261117-000000"
