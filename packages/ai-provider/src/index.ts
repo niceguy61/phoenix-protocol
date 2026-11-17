@@ -112,6 +112,7 @@ export class NvidiaNimClient {
       temperature: input.temperature ?? 0,
       max_tokens: input.maxTokens ?? 128,
       response_format: { type: 'json_object' },
+      chat_template_kwargs: { reasoning_effort: 'low', clear_thinking: true },
     });
     const startedAt = Date.now();
     let lastError: NimRequestError | undefined;
