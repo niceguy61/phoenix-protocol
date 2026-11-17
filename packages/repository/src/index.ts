@@ -240,3 +240,5 @@ export class GitHubRepositoryClient {
     }
   }
 }
+
+export * from './change';

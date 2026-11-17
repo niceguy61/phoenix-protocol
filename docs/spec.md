@@ -1,5 +1,6 @@
 # Phoenix Protocol Spec
 
+**Status:** MVP complete; next phase spec drafted at `.kiro/specs/phoenix-change-risk/`  
 **Status:** Kiro-native spec ready for implementation  
 **Source:** [`docs/prd.md`](./prd.md)  
 **Canonical:** `.kiro/specs/phoenix-protocol/requirements.md`, `design.md`, `tasks.md`  
