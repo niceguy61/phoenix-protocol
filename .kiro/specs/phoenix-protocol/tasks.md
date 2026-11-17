@@ -35,9 +35,10 @@
 
 ## Phase 2: Deterministic analysis
 
-- [ ] **4. Implement public GitHub commit-pinned snapshots**
+- [x] **4. Implement public GitHub commit-pinned snapshots**
   - Acceptance: branch/ref resolves to a commit SHA; root path is validated; snapshot identity is stored.
   - Verify: `npm test -- repository`; `npm run test:integration -- repository`.
+  - Result: 5 repository unit tests and 1 live public GitHub integration test pass. Snapshot resolution validates the URL, root path, commit SHA, stable snapshot ID, and archive URL.
   - Depends on: 2.
 
 - [ ] **5. Implement Terraform analysis**

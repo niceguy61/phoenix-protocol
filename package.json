@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:nim": "vitest run packages/ai-provider/src --reporter=verbose",
+    "test:repository": "vitest run packages/repository/src --reporter=verbose",
     "test:e2e": "playwright test",
     "build": "npm run build --workspaces --if-present"
   },

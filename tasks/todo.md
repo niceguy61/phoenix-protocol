@@ -35,11 +35,12 @@
 
 ## Phase 2: Deterministic analysis path
 
-- [ ] **Task 4: Add commit-pinned GitHub repository snapshots**
+- [x] **Task 4: Add commit-pinned GitHub repository snapshots**
   - Acceptance: public repository, branch, root module, resolved commit SHA, and snapshot identity are returned; invalid roots and URLs fail safely.
   - Verify: `npm test -- repository`; `npm run test:integration -- repository`.
+  - Result: 5 repository unit tests and 1 live public GitHub integration test pass. Snapshot resolution validates the URL, root path, commit SHA, stable snapshot ID, and archive URL.
   - Dependencies: Task 2.
-  - Files likely touched: `packages/repository/*`, `tests/repository/*`.
+  - Files likely touched: `packages/repository/*`, `tests/repository/*`, `tests/integration/*`.
   - Estimated scope: Medium.
 
 - [ ] **Task 5: Implement Terraform analysis**
