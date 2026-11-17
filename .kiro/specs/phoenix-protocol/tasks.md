@@ -61,9 +61,9 @@
 
 ### Checkpoint: Analysis
 
-- [ ] Demo fixture exposes at least 10 supported resources.
-- [ ] Intentional blocker is found with source evidence.
-- [ ] NIM unavailability does not remove deterministic findings.
+- [x] Demo fixture exposes at least 10 supported resources.
+- [x] Intentional blocker is found with source evidence.
+- [x] NIM unavailability does not remove deterministic findings.
 
 ## Phase 3: Local/mock recovery proof
 
@@ -93,15 +93,16 @@
 
 ### Checkpoint: Mock recovery
 
-- [ ] Required checks all pass before `RECOVERY VERIFIED`.
-- [ ] Apply success plus application failure is not a successful recovery.
-- [ ] Cleanup failures remain visible.
+- [x] Required checks all pass before `RECOVERY VERIFIED`.
+- [x] Apply success plus application failure is not a successful recovery.
+- [x] Cleanup failures remain visible.
 
 ## Phase 4: Console and NIM evaluation
 
-- [ ] **12. Connect REST API and web console**
+- [x] **12. Connect REST API and web console**
   - Acceptance: UI renders actual API responses for repository, graph, risks, blueprint, approval, timeline, verification, and report.
   - Verify: `npm test -- web-console`; `npm run test:e2e`.
+  - Result: API analysis/recovery lifecycle is wired to the console; graph, risks, blueprint, verification, report export, AWS profile selection, and approval flow are covered by passing E2E tests.
   - Depends on: 4, 6, 7, 8, 9, 10, 11.
 
 - [ ] **13. Add NIM golden/adversarial evaluation reporting**
@@ -111,9 +112,9 @@
 
 ### Final local/mock gate
 
-- [ ] Public GitHub → analysis → graph/risk → blueprint approval → mock recovery → verification → report passes end to end.
-- [ ] `npm run typecheck`, `npm test`, `npm run test:nim`, `npm run test:e2e`, and `npm run build` pass.
-- [ ] AWS mode remains disabled by default.
+- [x] Public GitHub → analysis → graph/risk → blueprint approval → mock recovery → verification → report passes end to end.
+- [x] `npm run typecheck`, `npm test`, `npm run test:nim`, `npm run test:e2e`, and `npm run build` pass.
+- [x] AWS mode remains disabled by default.
 
 ## Phase 5: Explicit AWS sandbox extension
 
