@@ -1,7 +1,9 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { GitHubRepositoryClient, type RepositorySnapshot } from '@phoenix/repository';
+import { GitHubRepositoryClient, type RepositorySnapshot, type RepositorySourceFile } from '@phoenix/repository';
+import { analyzeTerraform, buildDependencyGraph, type TerraformAnalysis } from '@phoenix/analyzer';
+import { analyzeRecoveryRisks, createRecoveryBlueprint, type RiskAnalysisResult } from '@phoenix/recovery';
 
 const AnalysisInputSchema = z.object({
   repositoryUrl: z.string().url(),
@@ -9,12 +11,24 @@ const AnalysisInputSchema = z.object({
   terraformRoot: z.string().min(1).max(512),
 });
 
+type AnalysisRecord = {
+  analysisId: string;
+  status: 'analysis-complete';
+  snapshot: RepositorySnapshot;
+  analysis: TerraformAnalysis;
+  graph: ReturnType<typeof buildDependencyGraph>;
+  risks: RiskAnalysisResult;
+  blueprint: ReturnType<typeof createRecoveryBlueprint> | null;
+  blueprintError?: string;
+};
+
 export interface RepositoryClient {
   resolveSnapshot(input: {
     repositoryUrl: string;
     ref: string;
     terraformRoot: string;
   }): Promise<RepositorySnapshot>;
+  getTerraformFiles?(snapshot: RepositorySnapshot): Promise<RepositorySourceFile[]>;
 }
 
 export interface ApiServerOptions {
@@ -23,7 +37,7 @@ export interface ApiServerOptions {
 
 export function createApiServer(options: ApiServerOptions = {}): Server {
   const repositoryClient = options.repositoryClient ?? new GitHubRepositoryClient();
-  const analyses = new Map<string, { analysisId: string; status: 'snapshot-resolved'; snapshot: RepositorySnapshot }>();
+  const analyses = new Map<string, AnalysisRecord>();
 
   return createServer(async (request, response) => {
     try {
@@ -43,7 +57,7 @@ async function route(
   request: IncomingMessage,
   response: ServerResponse,
   repositoryClient: RepositoryClient,
-  analyses: Map<string, { analysisId: string; status: 'snapshot-resolved'; snapshot: RepositorySnapshot }>,
+  analyses: Map<string, AnalysisRecord>,
 ): Promise<void> {
   const method = request.method ?? 'GET';
   const path = new URL(request.url ?? '/', 'http://localhost').pathname;
@@ -74,9 +88,57 @@ async function route(
       return;
     }
     const snapshot = await repositoryClient.resolveSnapshot(body.data);
-    const analysis = { analysisId: randomUUID(), status: 'snapshot-resolved' as const, snapshot };
+    const files = repositoryClient.getTerraformFiles ? await repositoryClient.getTerraformFiles(snapshot) : [];
+    const terraformAnalysis = await analyzeTerraform(files);
+    const graph = buildDependencyGraph(terraformAnalysis);
+    const risks = await analyzeRecoveryRisks(terraformAnalysis, {
+      sessionId: randomUUID(),
+      observedAt: new Date().toISOString(),
+    });
+    let blueprint: AnalysisRecord['blueprint'] = null;
+    let blueprintError: string | undefined;
+    try {
+      blueprint = createRecoveryBlueprint(graph, risks.findings);
+    } catch (error) {
+      blueprintError = error instanceof Error ? error.message : 'Recovery Blueprint could not be generated';
+    }
+
+    const analysis: AnalysisRecord = {
+      analysisId: randomUUID(),
+      status: 'analysis-complete',
+      snapshot,
+      analysis: terraformAnalysis,
+      graph,
+      risks,
+      blueprint,
+      ...(blueprintError ? { blueprintError } : {}),
+    };
     analyses.set(analysis.analysisId, analysis);
     sendJson(response, 201, analysis);
+    return;
+  }
+
+  const graphMatch = path.match(/^\/api\/analyses\/([^/]+)\/graph$/);
+  if (method === 'GET' && graphMatch) {
+    const analysis = analyses.get(graphMatch[1]);
+    if (!analysis) return sendJson(response, 404, notFound('Analysis'));
+    sendJson(response, 200, analysis.graph);
+    return;
+  }
+
+  const risksMatch = path.match(/^\/api\/analyses\/([^/]+)\/risks$/);
+  if (method === 'GET' && risksMatch) {
+    const analysis = analyses.get(risksMatch[1]);
+    if (!analysis) return sendJson(response, 404, notFound('Analysis'));
+    sendJson(response, 200, analysis.risks);
+    return;
+  }
+
+  const blueprintMatch = path.match(/^\/api\/analyses\/([^/]+)\/blueprint$/);
+  if (method === 'GET' && blueprintMatch) {
+    const analysis = analyses.get(blueprintMatch[1]);
+    if (!analysis) return sendJson(response, 404, notFound('Analysis'));
+    sendJson(response, 200, { blueprint: analysis.blueprint, error: analysis.blueprintError });
     return;
   }
 
@@ -84,7 +146,7 @@ async function route(
   if (method === 'GET' && analysisMatch) {
     const analysis = analyses.get(analysisMatch[1]);
     if (!analysis) {
-      sendJson(response, 404, { error: { code: 'NOT_FOUND', message: 'Analysis not found' } });
+      sendJson(response, 404, notFound('Analysis'));
       return;
     }
     sendJson(response, 200, analysis);
@@ -92,6 +154,10 @@ async function route(
   }
 
   sendJson(response, 404, { error: { code: 'NOT_FOUND', message: 'Route not found' } });
+}
+
+function notFound(resource: string) {
+  return { error: { code: 'NOT_FOUND', message: `${resource} not found` } };
 }
 
 async function readJson(request: IncomingMessage): Promise<unknown> {

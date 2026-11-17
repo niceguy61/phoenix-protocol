@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react';
 
 type AnalysisResponse = {
   analysisId: string;
-  status: 'snapshot-resolved';
+  status: 'analysis-complete';
   snapshot: {
     repository: string;
     ref: string;
@@ -12,6 +12,10 @@ type AnalysisResponse = {
     terraformRoot: string;
     snapshotId: string;
   };
+  analysis: { resources: unknown[]; filesAnalyzed: string[]; diagnostics: unknown[] };
+  graph: { nodes: unknown[]; unresolved: string[]; cycles: string[] };
+  risks: { findings: Array<{ severity: string; summary: string }>; diagnostics: string[] };
+  blueprint: { steps: Array<{ id: string; approvalRequired: boolean }> } | null;
 };
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:4000';
@@ -104,10 +108,18 @@ export default function HomePage() {
           </form>
           {error && <p className="message error" role="alert">{error}</p>}
           {analysis && (
-            <div className="message success" role="status">
-              <strong>Snapshot pinned.</strong>
-              <span>{analysis.snapshot.repository} · {analysis.snapshot.commitSha.slice(0, 12)} · {analysis.snapshot.terraformRoot}</span>
-            </div>
+            <>
+              <div className="message success" role="status">
+                <strong>Snapshot pinned.</strong>
+                <span>{analysis.snapshot.repository} · {analysis.snapshot.commitSha.slice(0, 12)} · {analysis.snapshot.terraformRoot}</span>
+              </div>
+              <div className="analysis-overview" aria-label="Analysis result">
+                <div><strong>{analysis.analysis.resources.length}</strong><span>resources</span></div>
+                <div><strong>{analysis.graph.unresolved.length}</strong><span>unresolved</span></div>
+                <div><strong>{analysis.risks.findings.length}</strong><span>risk findings</span></div>
+                <div><strong>{analysis.blueprint?.steps.length ?? 0}</strong><span>blueprint steps</span></div>
+              </div>
+            </>
           )}
         </article>
 

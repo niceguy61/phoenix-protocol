@@ -10,6 +10,20 @@ const GitHubRepositoryUrlSchema = z.object({
   name: z.string().regex(/^[A-Za-z0-9_.-]+$/),
 });
 
+const GitTreeResponseSchema = z.object({
+  truncated: z.boolean().optional(),
+  tree: z.array(z.object({
+    path: z.string(),
+    type: z.string(),
+    sha: z.string().regex(/^[a-f0-9]{40}$/),
+  })),
+});
+
+const GitBlobResponseSchema = z.object({
+  content: z.string(),
+  encoding: z.literal('base64'),
+});
+
 export interface GitHubRepositoryRef {
   owner: string;
   name: string;
@@ -28,6 +42,11 @@ export interface RepositorySnapshot {
   terraformRoot: string;
   snapshotId: string;
   archiveUrl: string;
+}
+
+export interface RepositorySourceFile {
+  path: string;
+  content: string;
 }
 
 export interface GitHubRepositoryClientOptions {
@@ -167,6 +186,55 @@ export class GitHubRepositoryClient {
         throw new GitHubRepositoryError('GitHub commit lookup timed out');
       }
       throw new GitHubRepositoryError('GitHub commit lookup failed');
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async getTerraformFiles(snapshot: RepositorySnapshot): Promise<RepositorySourceFile[]> {
+    const repository = parseGitHubRepositoryUrl(`https://github.com/${snapshot.repository}`);
+    const treeEndpoint = `${this.apiBaseUrl}/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}/git/trees/${encodeURIComponent(snapshot.commitSha)}?recursive=1`;
+    const tree = await this.requestJson(treeEndpoint, GitTreeResponseSchema);
+    if (tree.truncated) throw new GitHubRepositoryError('GitHub tree response was truncated');
+
+    const rootPrefix = snapshot.terraformRoot === '.' ? '' : `${snapshot.terraformRoot.replace(/\/$/, '')}/`;
+    const files = tree.tree
+      .filter((entry) => entry.type === 'blob')
+      .filter((entry) => entry.path.startsWith(rootPrefix))
+      .filter((entry) => entry.path.endsWith('.tf') || entry.path.endsWith('.tf.json'))
+      .map((entry) => ({ ...entry, relativePath: entry.path.slice(rootPrefix.length) }))
+      .filter((entry) => entry.relativePath && !entry.relativePath.split('/').includes('..'))
+      .slice(0, 200);
+
+    return Promise.all(files.map(async (entry) => {
+      const blobEndpoint = `${this.apiBaseUrl}/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}/git/blobs/${encodeURIComponent(entry.sha)}`;
+      const blob = await this.requestJson(blobEndpoint, GitBlobResponseSchema);
+      return {
+        path: entry.relativePath,
+        content: Buffer.from(blob.content.replace(/\n/g, ''), 'base64').toString('utf8'),
+      };
+    }));
+  }
+
+  private async requestJson<T>(endpoint: string, schema: z.ZodType<T>): Promise<T> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const headers: Record<string, string> = {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'phoenix-protocol',
+      };
+      if (this.options.token) headers.Authorization = `Bearer ${this.options.token}`;
+      const response = await this.fetchImpl(endpoint, { headers, signal: controller.signal });
+      if (!response.ok) throw new GitHubRepositoryError(`GitHub API request failed with status ${response.status}`, response.status);
+      const payload: unknown = JSON.parse(await response.text());
+      const parsed = schema.safeParse(payload);
+      if (!parsed.success) throw new GitHubRepositoryError('GitHub API response failed its schema');
+      return parsed.data;
+    } catch (error) {
+      if (error instanceof GitHubRepositoryError) throw error;
+      if (error instanceof DOMException && error.name === 'AbortError') throw new GitHubRepositoryError('GitHub API request timed out');
+      throw new GitHubRepositoryError('GitHub API request failed');
     } finally {
       clearTimeout(timeout);
     }

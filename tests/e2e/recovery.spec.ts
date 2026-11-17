@@ -10,6 +10,8 @@ test('resolves a public repository and renders the pinned snapshot', async ({ pa
 
   await expect(page.getByRole('status')).toContainText('Snapshot pinned.', { timeout: 30_000 });
   await expect(page.getByRole('status')).toContainText('niceguy61/phoenix-protocol');
+  await expect(page.getByLabel('Analysis result')).toContainText('resources');
+  await expect(page.getByLabel('Analysis result')).toContainText('blueprint steps');
 });
 
 test('renders an actionable API error state', async ({ page }) => {

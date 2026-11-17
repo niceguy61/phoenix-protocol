@@ -82,3 +82,9 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .field-row { grid-template-columns: 1fr; }
   .footer-line { flex-direction: column; }
 }
+
+.analysis-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.analysis-overview div { display: grid; gap: 3px; border: 1px solid var(--line); background: var(--surface-raised); padding: 12px 10px; }
+.analysis-overview strong { color: var(--text); font-size: 1.25rem; font-weight: 600; letter-spacing: -0.04em; }
+.analysis-overview span { color: var(--dim); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; }
+@media (max-width: 520px) { .analysis-overview { grid-template-columns: repeat(2, 1fr); } }
