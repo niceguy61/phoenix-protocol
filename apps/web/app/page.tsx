@@ -1,8 +1,141 @@
+'use client';
+
+import { FormEvent, useState } from 'react';
+
+type AnalysisResponse = {
+  analysisId: string;
+  status: 'snapshot-resolved';
+  snapshot: {
+    repository: string;
+    ref: string;
+    commitSha: string;
+    terraformRoot: string;
+    snapshotId: string;
+  };
+};
+
+const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:4000';
+
 export default function HomePage() {
+  const [repositoryUrl, setRepositoryUrl] = useState('https://github.com/niceguy61/phoenix-protocol');
+  const [ref, setRef] = useState('feature/initial-scaffold');
+  const [terraformRoot, setTerraformRoot] = useState('.');
+  const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function submitAnalysis(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    setAnalysis(null);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${apiBase}/api/analyses`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ repositoryUrl, ref, terraformRoot }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        setError(payload.error?.message ?? 'Analysis could not be started.');
+        return;
+      }
+      setAnalysis(payload as AnalysisResponse);
+    } catch {
+      setError('API is unavailable. Start the Phoenix API on port 4000 and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <main>
-      <h1>Phoenix Protocol</h1>
-      <p>Infrastructure recovery verification is being initialized.</p>
+    <main className="shell">
+      <header className="topbar">
+        <a className="wordmark" href="#top" aria-label="Phoenix Protocol home">
+          <span className="wordmark-mark" aria-hidden="true">P</span>
+          <span>Phoenix Protocol</span>
+        </a>
+        <span className="status-pill"><span className="status-dot" /> Local proof environment</span>
+      </header>
+
+      <section className="hero" id="top">
+        <div className="eyebrow">Infrastructure recovery verification</div>
+        <h1>Prove your infrastructure can rise again.</h1>
+        <p className="hero-copy">
+          Pin a Terraform repository to an immutable commit, expose its recovery dependencies,
+          and build an evidence trail before you trust the rebuild.
+        </p>
+        <div className="hero-meta">
+          <span><strong>01</strong> Snapshot the source</span>
+          <span><strong>02</strong> Find blockers</span>
+          <span><strong>03</strong> Verify recovery</span>
+        </div>
+      </section>
+
+      <section className="workspace-grid" aria-label="Recovery workspace">
+        <article className="panel source-panel">
+          <div className="panel-heading">
+            <div>
+              <div className="section-label">Start a recovery analysis</div>
+              <h2>Source snapshot</h2>
+            </div>
+            <span className="step-index">01</span>
+          </div>
+          <p className="panel-copy">The API resolves the selected ref to a commit SHA before analysis begins.</p>
+          <form onSubmit={submitAnalysis} className="source-form">
+            <label>
+              GitHub repository
+              <input value={repositoryUrl} onChange={(event) => setRepositoryUrl(event.target.value)} type="url" required />
+            </label>
+            <div className="field-row">
+              <label>
+                Branch or ref
+                <input value={ref} onChange={(event) => setRef(event.target.value)} required />
+              </label>
+              <label>
+                Terraform root
+                <input value={terraformRoot} onChange={(event) => setTerraformRoot(event.target.value)} required />
+              </label>
+            </div>
+            <button className="primary-button" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Resolving commit…' : 'Resolve source snapshot'}
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
+          {error && <p className="message error" role="alert">{error}</p>}
+          {analysis && (
+            <div className="message success" role="status">
+              <strong>Snapshot pinned.</strong>
+              <span>{analysis.snapshot.repository} · {analysis.snapshot.commitSha.slice(0, 12)} · {analysis.snapshot.terraformRoot}</span>
+            </div>
+          )}
+        </article>
+
+        <aside className="panel evidence-panel">
+          <div className="panel-heading">
+            <div>
+              <div className="section-label">Evidence pipeline</div>
+              <h2>Recovery proof</h2>
+            </div>
+            <span className="step-index muted">02—05</span>
+          </div>
+          <ol className="pipeline">
+            <li className="active"><span>02</span><div><strong>Terraform analysis</strong><small>Resource inventory and source locators</small></div></li>
+            <li><span>03</span><div><strong>Dependency graph</strong><small>Prerequisites and unresolved edges</small></div></li>
+            <li><span>04</span><div><strong>Recovery Blueprint</strong><small>Ordered steps before approval</small></div></li>
+            <li><span>05</span><div><strong>Verification report</strong><small>Infrastructure and application checks</small></div></li>
+          </ol>
+          <div className="evidence-note">
+            <span className="note-icon" aria-hidden="true">i</span>
+            <p>AI suggestions remain separate from verified execution evidence.</p>
+          </div>
+        </aside>
+      </section>
+
+      <footer className="footer-line">
+        <span>Built with Kiro + Kiro Crew</span>
+        <span>NVIDIA NIM evaluation · AWS sandbox gated</span>
+      </footer>
     </main>
   );
 }

@@ -1,10 +1,84 @@
 :root {
   color-scheme: dark;
-  font-family: 'Noto Sans KR', system-ui, sans-serif;
-  background: #0b1020;
-  color: #eef2ff;
+  --bg: #0e1117;
+  --surface: #151a21;
+  --surface-raised: #1b222c;
+  --line: #303946;
+  --line-strong: #465365;
+  --text: #f4f1e8;
+  --muted: #a2abb6;
+  --dim: #6f7a87;
+  --accent: #d8f35d;
+  --accent-ink: #172000;
+  --danger: #ff9b90;
+  --success: #b7e69a;
+  font-family: 'Noto Sans KR', Inter, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; }
-main { margin: 0 auto; max-width: 960px; padding: 48px 24px; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-height: 100vh; background: var(--bg); }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: 0.65; }
+
+.shell { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 24px 0 32px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; min-height: 40px; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+.wordmark { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-size: 0.9rem; font-weight: 700; letter-spacing: -0.01em; }
+.wordmark-mark { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid var(--accent); color: var(--accent); font-family: Georgia, serif; font-size: 1.1rem; font-style: italic; }
+.status-pill { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.02em; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(216,243,93,0.1); }
+
+.hero { padding: 88px 0 72px; max-width: 760px; }
+.eyebrow, .section-label { color: var(--accent); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.hero h1 { margin: 16px 0 20px; max-width: 740px; font-size: clamp(3rem, 7vw, 6.6rem); font-weight: 500; letter-spacing: -0.075em; line-height: 0.95; }
+.hero-copy { max-width: 590px; margin: 0; color: var(--muted); font-size: 1.05rem; line-height: 1.7; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 34px; color: var(--dim); font-size: 0.75rem; }
+.hero-meta strong { margin-right: 7px; color: var(--text); font-weight: 700; }
+
+.workspace-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr); gap: 18px; }
+.panel { border: 1px solid var(--line); background: var(--surface); padding: 28px; }
+.panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.panel h2 { margin: 8px 0 0; font-size: 1.35rem; font-weight: 600; letter-spacing: -0.03em; }
+.panel-copy { margin: 16px 0 26px; color: var(--muted); font-size: 0.83rem; line-height: 1.6; }
+.step-index { color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; }
+.step-index.muted { color: var(--dim); }
+.source-form { display: grid; gap: 16px; }
+.source-form label { display: grid; gap: 8px; color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+.source-form input { width: 100%; border: 1px solid var(--line-strong); border-radius: 0; background: #10141a; color: var(--text); padding: 12px 13px; outline: none; }
+.source-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(216,243,93,0.12); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.primary-button { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); padding: 13px 15px; font-size: 0.78rem; font-weight: 800; }
+.primary-button:hover { background: #e6fa86; }
+.message { display: grid; gap: 4px; margin: 18px 0 0; padding: 13px 14px; border-left: 2px solid; font-size: 0.75rem; line-height: 1.5; }
+.message.error { border-color: var(--danger); color: var(--danger); background: rgba(255,155,144,0.06); }
+.message.success { border-color: var(--success); color: var(--success); background: rgba(183,230,154,0.06); }
+.message.success span { color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.7rem; }
+
+.pipeline { display: grid; gap: 0; margin: 30px 0 26px; padding: 0; list-style: none; }
+.pipeline li { display: grid; grid-template-columns: 34px 1fr; gap: 13px; position: relative; min-height: 68px; color: var(--dim); }
+.pipeline li:not(:last-child)::after { content: ''; position: absolute; left: 16px; top: 34px; width: 1px; height: 40px; background: var(--line); }
+.pipeline li span { display: grid; place-items: center; z-index: 1; width: 33px; height: 33px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--dim); font-size: 0.68rem; font-weight: 800; }
+.pipeline li.active span { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.pipeline strong { display: block; margin: 2px 0 5px; color: var(--text); font-size: 0.8rem; }
+.pipeline small { color: var(--dim); font-size: 0.7rem; }
+.evidence-note { display: flex; gap: 10px; border-top: 1px solid var(--line); padding-top: 18px; }
+.note-icon { display: grid; place-items: center; flex: 0 0 18px; height: 18px; border: 1px solid var(--line-strong); color: var(--accent); font-family: Georgia, serif; font-size: 0.75rem; font-style: italic; }
+.evidence-note p { margin: 0; color: var(--muted); font-size: 0.72rem; line-height: 1.5; }
+.footer-line { display: flex; justify-content: space-between; gap: 18px; margin-top: 18px; color: var(--dim); font-size: 0.68rem; }
+
+@media (max-width: 800px) {
+  .shell { width: min(100% - 32px, 640px); }
+  .hero { padding: 64px 0 48px; }
+  .workspace-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .shell { width: min(100% - 24px, 640px); }
+  .topbar { align-items: flex-start; gap: 12px; flex-direction: column; }
+  .hero h1 { font-size: clamp(2.8rem, 15vw, 4.2rem); }
+  .field-row { grid-template-columns: 1fr; }
+  .footer-line { flex-direction: column; }
+}
