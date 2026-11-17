@@ -16,6 +16,10 @@ export interface AwsInventoryReader {
   listS3Buckets(): Promise<AwsResourceSummary[]>;
   listDynamoDbTables(): Promise<AwsResourceSummary[]>;
   listLambdaFunctions(): Promise<AwsResourceSummary[]>;
+  listDsqlClusters?(): Promise<AwsResourceSummary[]>;
+  listRoute53HostedZones?(): Promise<AwsResourceSummary[]>;
+  listAcmCertificates?(): Promise<AwsResourceSummary[]>;
+  listApiGateways?(): Promise<AwsResourceSummary[]>;
   listTaggedResources?(): Promise<AwsResourceSummary[]>;
 }
 
@@ -47,6 +51,10 @@ export async function collectAwsInventory(
     reader.listS3Buckets(),
     reader.listDynamoDbTables(),
     reader.listLambdaFunctions(),
+    reader.listDsqlClusters?.() ?? Promise.resolve([]),
+    reader.listRoute53HostedZones?.() ?? Promise.resolve([]),
+    reader.listAcmCertificates?.() ?? Promise.resolve([]),
+    reader.listApiGateways?.() ?? Promise.resolve([]),
     reader.listTaggedResources?.() ?? Promise.resolve([]),
   ])).flat();
   const taggedResourceCount = resources.filter((resource) => resource.kind === 'tagged-resource').length;
@@ -58,7 +66,7 @@ export async function collectAwsInventory(
     collectedAt: new Date().toISOString(),
     coverage: {
       taggedResourceCount,
-      limitations: ['Service-specific queries cover the initial MVP set; tagged resources extend coverage. Untagged resources may require service-specific readers.'],
+      limitations: ['Service-specific readers cover the initial MVP set plus DSQL, Route 53, ACM, and API Gateway; tagged resources extend coverage. Untagged resources may require additional readers.'],
     },
     resources,
   };

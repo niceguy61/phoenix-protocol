@@ -1,4 +1,10 @@
 import { DynamoDBClient, paginateListTables } from '@aws-sdk/client-dynamodb';
+import { ACMClient, ListCertificatesCommand } from '@aws-sdk/client-acm';
+import { DSQLClient, ListClustersCommand } from '@aws-sdk/client-dsql';
+import { APIGatewayClient, GetRestApisCommand } from '@aws-sdk/client-api-gateway';
+import { ApiGatewayV2Client, GetApisCommand } from '@aws-sdk/client-apigatewayv2';
+import { Route53Client, ListHostedZonesCommand } from '@aws-sdk/client-route-53';
+
 import { EC2Client, paginateDescribeInstances, paginateDescribeVpcs } from '@aws-sdk/client-ec2';
 import { ECSClient, paginateListClusters } from '@aws-sdk/client-ecs';
 import { ElasticLoadBalancingV2Client, paginateDescribeLoadBalancers } from '@aws-sdk/client-elastic-load-balancing-v2';
@@ -21,6 +27,11 @@ export function createAwsSdkInventoryReader(input: { profile: 'default' | 'sandb
   const lambda = new LambdaClient(config);
   const sts = new STSClient(config);
   const tagging = new ResourceGroupsTaggingAPIClient(config);
+  const dsql = new DSQLClient(config);
+  const acm = new ACMClient(config);
+  const apiGateway = new APIGatewayClient(config);
+  const apiGatewayV2 = new ApiGatewayV2Client(config);
+  const route53 = new Route53Client({ credentials: fromIni({ profile: input.profile }), region: 'us-east-1', maxAttempts: 3 });
 
   return {
     async getCallerIdentity() {
@@ -68,6 +79,52 @@ export function createAwsSdkInventoryReader(input: { profile: 'default' | 'sandb
     async listLambdaFunctions() {
       const resources: AwsResourceSummary[] = [];
       for await (const page of paginateListFunctions({ client: lambda }, {})) for (const fn of page.Functions ?? []) if (fn.FunctionArn) resources.push({ id: fn.FunctionArn, kind: 'lambda-function', status: 'active', name: fn.FunctionName, metadata: { runtime: fn.Runtime ?? '' } });
+      return resources;
+    },
+    async listDsqlClusters() {
+      const resources: AwsResourceSummary[] = [];
+      let nextToken: string | undefined;
+      do {
+        const page = await dsql.send(new ListClustersCommand({ maxResults: 100, nextToken }));
+        for (const cluster of page.clusters ?? []) if (cluster.identifier) resources.push({ id: cluster.identifier, kind: 'dsql-cluster', status: 'available', name: cluster.identifier });
+        nextToken = page.nextToken;
+      } while (nextToken);
+      return resources;
+    },
+    async listRoute53HostedZones() {
+      const resources: AwsResourceSummary[] = [];
+      let marker: string | undefined;
+      do {
+        const page = await route53.send(new ListHostedZonesCommand({ Marker: marker }));
+        for (const zone of page.HostedZones ?? []) if (zone.Id) resources.push({ id: zone.Id, kind: 'route53-hosted-zone', status: 'available', name: zone.Name });
+        marker = page.IsTruncated ? page.NextMarker : undefined;
+      } while (marker);
+      return resources;
+    },
+    async listAcmCertificates() {
+      const resources: AwsResourceSummary[] = [];
+      let nextToken: string | undefined;
+      do {
+        const page = await acm.send(new ListCertificatesCommand({ NextToken: nextToken, MaxItems: 1000 }));
+        for (const certificate of page.CertificateSummaryList ?? []) if (certificate.CertificateArn) resources.push({ id: certificate.CertificateArn, kind: 'acm-certificate', status: certificate.Status ?? 'unknown', name: certificate.DomainName });
+        nextToken = page.NextToken;
+      } while (nextToken);
+      return resources;
+    },
+    async listApiGateways() {
+      const resources: AwsResourceSummary[] = [];
+      let position: string | undefined;
+      do {
+        const rest = await apiGateway.send(new GetRestApisCommand({ position, limit: 500 }));
+        for (const api of rest.items ?? []) if (api.id) resources.push({ id: api.id, kind: 'api-gateway-rest', status: 'available', name: api.name });
+        position = rest.position;
+      } while (position);
+      let nextToken: string | undefined;
+      do {
+        const http = await apiGatewayV2.send(new GetApisCommand({ NextToken: nextToken, MaxResults: '1000' }));
+        for (const api of http.Items ?? []) if (api.ApiId) resources.push({ id: api.ApiId, kind: 'api-gateway-http', status: 'available', name: api.Name });
+        nextToken = http.NextToken;
+      } while (nextToken);
       return resources;
     },
     async listTaggedResources() {
