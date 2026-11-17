@@ -19,6 +19,7 @@ export interface DependencyGraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
   unresolved: string[];
+  externalInputs: string[];
   cycles: string[][];
 }
 
@@ -44,10 +45,15 @@ export function buildDependencyGraph(analysis: TerraformAnalysis): DependencyGra
 
   const nodeIds = new Set(nodes.map((node) => node.id));
   const unresolved = new Set<string>();
+  const externalInputs = new Set<string>();
   const edges: GraphEdge[] = [];
 
   for (const dependency of analysis.dependencies) {
     if (!nodeIds.has(dependency.from)) continue;
+    if (dependency.to.startsWith('var.')) {
+      externalInputs.add(dependency.to);
+      continue;
+    }
     if (!nodeIds.has(dependency.to)) {
       unresolved.add(dependency.to);
       continue;
@@ -63,6 +69,7 @@ export function buildDependencyGraph(analysis: TerraformAnalysis): DependencyGra
     nodes,
     edges: uniqueEdges(edges),
     unresolved: [...unresolved].sort(),
+    externalInputs: [...externalInputs].sort(),
     cycles: findCycles(nodes.map((node) => node.id), edges),
   };
 }

@@ -17,6 +17,7 @@ function graph(overrides: Partial<DependencyGraph> = {}): DependencyGraph {
       line: 5,
     }],
     unresolved: [],
+    externalInputs: [],
     cycles: [],
     ...overrides,
   };

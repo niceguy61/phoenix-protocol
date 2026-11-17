@@ -3,7 +3,7 @@ import type { Finding } from '@phoenix/contracts';
 import type { DependencyGraph } from '@phoenix/analyzer';
 import { generateEvidenceReport } from './report';
 
-const graph: DependencyGraph = { nodes: [], edges: [], unresolved: [], cycles: [] };
+const graph: DependencyGraph = { nodes: [], edges: [], unresolved: [], externalInputs: [], cycles: [] };
 const finding: Finding = {
   id: 'risk-1',
   severity: 'high',

@@ -39,6 +39,7 @@ describe('buildDependencyGraph', () => {
       expect.objectContaining({ from: 'aws_subnet.app', to: 'aws_vpc.main', kind: 'reference' }),
     ]);
     expect(graph.unresolved).toEqual([]);
+    expect(graph.externalInputs).toEqual([]);
   });
 
   it('keeps unresolved dependencies visible instead of treating them as resolved', () => {
@@ -54,6 +55,21 @@ describe('buildDependencyGraph', () => {
 
     expect(graph.edges).toEqual([]);
     expect(graph.unresolved).toEqual(['aws_vpc.missing']);
+  });
+
+  it('classifies Terraform variables as external inputs, not unresolved resources', () => {
+    const graph = buildDependencyGraph(analysis({
+      dependencies: [{
+        from: 'aws_subnet.app',
+        to: 'var.vpc_cidr',
+        kind: 'variable-reference',
+        path: 'main.tf',
+        line: 5,
+      }],
+    }));
+
+    expect(graph.unresolved).toEqual([]);
+    expect(graph.externalInputs).toEqual(['var.vpc_cidr']);
   });
 
   it('reports dependency cycles', () => {
