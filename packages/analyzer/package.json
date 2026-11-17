@@ -1,0 +1,13 @@
+{
+  "name": "@phoenix/analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@cdktf/hcl2json": "^0.21.0",
+    "@phoenix/contracts": "0.1.0"
+  }
+}

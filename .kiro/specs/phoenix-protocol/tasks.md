@@ -41,9 +41,10 @@
   - Result: 5 repository unit tests and 1 live public GitHub integration test pass. Snapshot resolution validates the URL, root path, commit SHA, stable snapshot ID, and archive URL.
   - Depends on: 2.
 
-- [ ] **5. Implement Terraform analysis**
+- [x] **5. Implement Terraform analysis**
   - Acceptance: initial AWS resource set, modules, data sources, variables, outputs, dependencies, unsupported constructs, and source locators are represented.
   - Verify: `npm test -- analyzer`; `npm run test:fixtures -- analyzer`.
+  - Result: 4 analyzer tests pass; 10 supported resources, dependencies, variables, module/data/output metadata, hardcoded-value diagnostics, unsupported resource diagnostics, invalid-HCL diagnostics, and fixtures are implemented.
   - Depends on: 2, 4.
 
 - [ ] **6. Implement the dependency graph**

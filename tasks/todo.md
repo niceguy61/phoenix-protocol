@@ -43,9 +43,10 @@
   - Files likely touched: `packages/repository/*`, `tests/repository/*`, `tests/integration/*`.
   - Estimated scope: Medium.
 
-- [ ] **Task 5: Implement Terraform analysis**
+- [x] **Task 5: Implement Terraform analysis**
   - Acceptance: at least 10 initial AWS resource types, modules, data sources, variables, outputs, dependencies, unsupported constructs, and source locators are represented.
   - Verify: `npm test -- analyzer`; `npm run test:fixtures -- analyzer`.
+  - Result: 4 analyzer tests pass; 10 supported resources, dependencies, variables, module/data/output metadata, hardcoded-value diagnostics, unsupported resource diagnostics, invalid-HCL diagnostics, and fixtures are implemented.
   - Dependencies: Tasks 2 and 4.
   - Files likely touched: `packages/analyzer/*`, `fixtures/terraform/*`, `tests/analyzer/*`.
   - Estimated scope: Large; split parser and diagnostics if it exceeds five files.
