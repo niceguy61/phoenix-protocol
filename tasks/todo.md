@@ -59,9 +59,10 @@
   - Files likely touched: `packages/analyzer/graph/*`, `tests/graph/*`.
   - Estimated scope: Small.
 
-- [ ] **Task 7: Implement recovery risk analysis**
-  - Acceptance: deterministic risk rules run first; NIM suggestions remain inferred/needs-evidence; each finding has severity, source evidence, and recommended action.
+- [x] **Task 7: Implement recovery risk analysis**
+  - Acceptance: deterministic rules run first; NIM suggestions remain inferred/needs-evidence; each finding has severity, source evidence, and recommended action.
   - Verify: `npm test -- recovery-risk`; `npm run test:nim -- --module recovery-risk`.
+  - Result: 3 risk tests pass; unsupported resources, missing variables, unresolved dependencies, hardcoded values, and external prerequisites become evidence-backed findings. NIM advisory output remains `inferred`, and NIM failure preserves deterministic findings.
   - Dependencies: Tasks 3, 5, and 6.
   - Files likely touched: `packages/recovery/risk/*`, `tests/recovery-risk/*`, `fixtures/nim/*`.
   - Estimated scope: Medium.

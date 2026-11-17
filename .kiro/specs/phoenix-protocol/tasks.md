@@ -53,9 +53,10 @@
   - Result: 3 graph tests pass; graph output provides stable sorted nodes, dependent-to-prerequisite edges, unresolved dependencies, and cycle paths.
   - Depends on: 5.
 
-- [ ] **7. Implement recovery risk analysis**
+- [x] **7. Implement recovery risk analysis**
   - Acceptance: deterministic rules work without NIM; NIM output is schema-validated and remains inferred/recommendation/needs-evidence unless grounded.
   - Verify: `npm test -- recovery-risk`; `npm run test:nim -- --module recovery-risk`.
+  - Result: 3 risk tests pass; unsupported resources, missing variables, unresolved dependencies, hardcoded values, and external prerequisites become evidence-backed findings. NIM advisory output remains `inferred`, and NIM failure preserves deterministic findings.
   - Depends on: 3, 5, 6.
 
 ### Checkpoint: Analysis

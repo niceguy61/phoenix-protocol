@@ -1,0 +1,15 @@
+{
+  "name": "@phoenix/recovery",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@phoenix/ai-provider": "0.1.0",
+    "@phoenix/analyzer": "0.1.0",
+    "@phoenix/contracts": "0.1.0",
+    "zod": "^4.6.7"
+  }
+}
