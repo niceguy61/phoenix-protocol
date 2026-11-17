@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Server } from 'node:http';
+import type { AwsInventoryReader } from '@phoenix/recovery';
 import { createApiServer, type RepositoryClient } from './server';
 
 const snapshot = {
@@ -35,6 +36,27 @@ describe('createApiServer', () => {
     expect(await response.json()).toEqual({ status: 'ok' });
   });
 
+  it('returns read-only AWS inventory for the selected profile', async () => {
+    const inventoryReader: AwsInventoryReader = {
+      getCallerIdentity: async () => ({ accountId: '261250906071', arn: 'arn:aws:sts::261250906071:assumed-role/test/user' }),
+      listVpcs: async () => [{ id: 'vpc-1', kind: 'vpc', status: 'available' }],
+      listEc2Instances: async () => [],
+      listEcsClusters: async () => [],
+      listLoadBalancers: async () => [],
+      listRdsInstances: async () => [],
+      listS3Buckets: async () => [],
+      listDynamoDbTables: async () => [{ id: 'table-1', kind: 'dynamodb-table', status: 'available' }],
+      listLambdaFunctions: async () => [],
+    };
+    const server = createApiServer({ inventoryReader }).listen(0);
+    servers.push(server);
+
+    const response = await request(server, '/api/aws/inventory?profile=default&region=ap-northeast-2');
+    const payload = await response.json();
+    expect(response.status).toBe(200);
+    expect(payload.accountId).toBe('261250906071');
+    expect(payload.resources).toHaveLength(2);
+  });
   it('returns the NIM golden/adversarial evaluation summary without credentials', async () => {
     const repositoryClient: RepositoryClient = { resolveSnapshot: async () => snapshot };
     const server = createApiServer({ repositoryClient }).listen(0);

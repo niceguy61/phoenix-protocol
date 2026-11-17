@@ -6,10 +6,13 @@ import { evaluateNimAdvisory, summarizeNimEvaluation } from '@phoenix/ai-provide
 import { analyzeTerraform, buildDependencyGraph, type TerraformAnalysis } from '@phoenix/analyzer';
 import {
   analyzeRecoveryRisks,
+  collectAwsInventory,
+  createAwsSdkInventoryReader,
   createRecoveryBlueprint,
   generateEvidenceReport,
   MockRecoveryRunner,
   runVerification,
+  type AwsInventoryReader,
   type RiskAnalysisResult,
   type VerificationResult,
 } from '@phoenix/recovery';
@@ -60,17 +63,19 @@ export interface RepositoryClient {
 
 export interface ApiServerOptions {
   repositoryClient?: RepositoryClient;
+  inventoryReader?: AwsInventoryReader;
 }
 
 export function createApiServer(options: ApiServerOptions = {}): Server {
   const repositoryClient = options.repositoryClient ?? new GitHubRepositoryClient();
+  const inventoryReader = options.inventoryReader;
   const runner = new MockRecoveryRunner();
   const analyses = new Map<string, AnalysisRecord>();
   const recoveries = new Map<string, RecoveryRecord>();
 
   return createServer(async (request, response) => {
     try {
-      await route(request, response, repositoryClient, runner, analyses, recoveries);
+      await route(request, response, repositoryClient, inventoryReader, runner, analyses, recoveries);
     } catch (error) {
       sendJson(response, 500, {
         error: {
@@ -86,6 +91,7 @@ async function route(
   request: IncomingMessage,
   response: ServerResponse,
   repositoryClient: RepositoryClient,
+  inventoryReader: AwsInventoryReader | undefined,
   runner: MockRecoveryRunner,
   analyses: Map<string, AnalysisRecord>,
   recoveries: Map<string, RecoveryRecord>,
@@ -126,6 +132,18 @@ async function route(
     return;
   }
 
+  if (method === 'GET' && path === '/api/aws/inventory') {
+    const query = new URL(request.url ?? '/', 'http://localhost').searchParams;
+    const input = z.object({ profile: AwsProfileSchema.default('default'), region: z.literal('ap-northeast-2').default('ap-northeast-2') }).safeParse({ profile: query.get('profile') ?? undefined, region: query.get('region') ?? undefined });
+    if (!input.success) return sendJson(response, 422, { error: { code: 'VALIDATION_ERROR', message: 'Only ap-northeast-2 is currently supported' } });
+    if (input.data.profile === 'sandbox' && process.env.PHOENIX_AWS_SANDBOX_ENABLED !== 'true') {
+      return sendJson(response, 403, { error: { code: 'SANDBOX_DISABLED', message: 'The sandbox profile is disabled' } });
+    }
+    const reader = inventoryReader ?? createAwsSdkInventoryReader(input.data);
+    const inventory = await collectAwsInventory(reader, input.data);
+    sendJson(response, 200, inventory);
+    return;
+  }
   if (method === 'GET' && path === '/api/evaluations/nim') {
     const results = [
       evaluateNimAdvisory({ name: 'grounded-risk', allowedFactFragments: ['aws_ecs_service.app exists'], requiresNeedsEvidence: true }, {
