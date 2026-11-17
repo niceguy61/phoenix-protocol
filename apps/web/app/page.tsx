@@ -91,6 +91,18 @@ export default function HomePage() {
     }
   }
 
+  function downloadReport(format: 'json' | 'html') {
+    const content = recovery?.report?.[format];
+    if (!content || !recovery) return;
+    const blob = new Blob([content], { type: format === 'json' ? 'application/json' : 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `phoenix-recovery-${recovery.sessionId}.${format}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function submitAnalysis(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -251,7 +263,15 @@ export default function HomePage() {
               <ul className="verification-list">
                 {recovery.verification.checks.map((check) => <li key={check.id}><span>{check.id}</span><strong className={check.status === 'passed' ? 'check-pass' : 'check-fail'}>{check.status}</strong><small>{check.message}</small></li>)}
               </ul>
-              {recovery.report && <p className="detail-muted">Canonical report status: {recovery.report.report.status}</p>}
+              {recovery.report && (
+                <>
+                  <p className="detail-muted">Canonical report status: {recovery.report.report.status}</p>
+                  <div className="report-actions">
+                    <button className="secondary-button" type="button" onClick={() => downloadReport('json')}>Download JSON report</button>
+                    <button className="secondary-button" type="button" onClick={() => downloadReport('html')}>Download HTML report</button>
+                  </div>
+                </>
+              )}
             </article>
           )}
         </section>

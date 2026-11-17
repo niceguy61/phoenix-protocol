@@ -18,6 +18,8 @@ test('resolves a public repository and renders the pinned snapshot', async ({ pa
   await expect(page.getByText('RECOVERY VERIFIED')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('heading', { name: 'Verification report' })).toBeVisible();
   await expect(page.getByText('terraform-apply').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download JSON report' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download HTML report' })).toBeVisible();
 });
 
 test('renders an actionable API error state', async ({ page }) => {
