@@ -29,8 +29,9 @@ describe('createApiServer', () => {
     const server = createApiServer({ repositoryClient }).listen(0);
     servers.push(server);
 
-    const response = await request(server, '/api/health');
+    const response = await request(server, '/api/health', { headers: { origin: 'http://127.0.0.1:3010' } });
     expect(response.status).toBe(200);
+    expect(response.headers.get('access-control-allow-origin')).toBe('http://127.0.0.1:3010');
     expect(await response.json()).toEqual({ status: 'ok' });
   });
 

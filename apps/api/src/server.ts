@@ -93,7 +93,12 @@ async function route(
   const method = request.method ?? 'GET';
   const path = new URL(request.url ?? '/', 'http://localhost').pathname;
   const origin = request.headers.origin;
-  if (origin === 'http://localhost:3000' || origin === 'http://127.0.0.1:3000') {
+  if (origin && [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3010',
+    'http://127.0.0.1:3010',
+  ].includes(origin)) {
     response.setHeader('access-control-allow-origin', origin);
     response.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
     response.setHeader('access-control-allow-headers', 'content-type');
