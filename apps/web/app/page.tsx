@@ -24,6 +24,8 @@ type AwsInventoryResponse = {
   region: string;
   accountId: string;
   collectedAt: string;
+  coverage: { taggedResourceCount: number; limitations: string[] };
+  comparison?: { mode: string; rows: Array<{ kind: string; declared: number; actual: number; status: string }>; limitations: string[] };
   resources: Array<{ id: string; kind: string; status: string; name?: string; metadata?: Record<string, string> }>;
 };
 
@@ -59,7 +61,7 @@ export default function HomePage() {
   async function scanAwsInventory() {
     setError('');
     try {
-      const response = await fetch(`${apiBase}/api/aws/inventory?profile=${awsProfile}&region=ap-northeast-2`);
+      const response = await fetch(`${apiBase}/api/aws/inventory?profile=${awsProfile}&region=ap-northeast-2${analysis ? `&analysisId=${analysis.analysisId}` : ''}`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message ?? 'AWS inventory scan failed.');
       setInventory(payload as AwsInventoryResponse);
@@ -229,8 +231,10 @@ export default function HomePage() {
           {inventory && (
             <div className="inventory-card" role="status" aria-label="Live AWS inventory">
               <div className="recovery-card-header"><span>Live AWS inventory</span><strong>{inventory.profile} · {inventory.region}</strong></div>
-              <div className="inventory-metrics">{['vpc', 'ec2-instance', 'ecs-cluster', 'load-balancer', 'rds-instance', 's3-bucket', 'dynamodb-table', 'lambda-function'].map((kind) => <div key={kind}><strong>{inventory.resources.filter((resource) => resource.kind === kind).length}</strong><span>{kind}</span></div>)}</div>
+              <div className="inventory-metrics">{['vpc', 'ec2-instance', 'ecs-cluster', 'load-balancer', 'rds-instance', 's3-bucket', 'dynamodb-table', 'lambda-function', 'tagged-resource'].map((kind) => <div key={kind}><strong>{inventory.resources.filter((resource) => resource.kind === kind).length}</strong><span>{kind}</span></div>)}</div>
+              {inventory.comparison && <div className="inventory-comparison"><strong>IaC vs live snapshot</strong>{inventory.comparison.rows.map((row) => <div key={row.kind}><span>{row.kind}</span><span>{row.declared} declared / {row.actual} live</span><b className={`comparison-${row.status}`}>{row.status}</b></div>)}</div>}
               <small className="field-hint">Account: {inventory.accountId} · Read-only snapshot at {new Date(inventory.collectedAt).toLocaleTimeString()}</small>
+              <small className="field-hint">Tagged resource extensions: {inventory.coverage.taggedResourceCount} · {inventory.coverage.limitations[0]}</small>
             </div>
           )}
           {error && <p className="message error" role="alert">{error}</p>}

@@ -139,3 +139,11 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .inventory-metrics strong { color: var(--text); font-size: 1rem; }
 .inventory-metrics span { color: var(--dim); font-size: 0.55rem; overflow-wrap: anywhere; text-transform: uppercase; }
 @media (max-width: 520px) { .inventory-metrics { grid-template-columns: repeat(2, 1fr); } }
+
+.inventory-comparison { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 12px; color: var(--muted); font-size: 0.68rem; }
+.inventory-comparison > strong { color: var(--text); font-size: 0.72rem; }
+.inventory-comparison > div { display: grid; grid-template-columns: 1fr 1.3fr auto; gap: 8px; align-items: center; }
+.inventory-comparison b { font-size: 0.56rem; text-transform: uppercase; }
+.comparison-matched { color: var(--success); }
+.comparison-unmanaged-candidate, .comparison-no-iac-evidence { color: var(--accent); }
+.comparison-missing-in-aws { color: var(--danger); }

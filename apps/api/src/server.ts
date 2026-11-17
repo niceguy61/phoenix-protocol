@@ -7,6 +7,7 @@ import { analyzeTerraform, buildDependencyGraph, type TerraformAnalysis } from '
 import {
   analyzeRecoveryRisks,
   collectAwsInventory,
+  compareTerraformToAws,
   createAwsSdkInventoryReader,
   createRecoveryBlueprint,
   generateEvidenceReport,
@@ -139,9 +140,13 @@ async function route(
     if (input.data.profile === 'sandbox' && process.env.PHOENIX_AWS_SANDBOX_ENABLED !== 'true') {
       return sendJson(response, 403, { error: { code: 'SANDBOX_DISABLED', message: 'The sandbox profile is disabled' } });
     }
+    const analysisId = query.get('analysisId');
     const reader = inventoryReader ?? createAwsSdkInventoryReader(input.data);
     const inventory = await collectAwsInventory(reader, input.data);
-    sendJson(response, 200, inventory);
+    const comparison = analysisId && analyses.has(analysisId)
+      ? compareTerraformToAws(analyses.get(analysisId)!.analysis, inventory)
+      : undefined;
+    sendJson(response, 200, comparison ? { ...inventory, comparison } : inventory);
     return;
   }
   if (method === 'GET' && path === '/api/evaluations/nim') {

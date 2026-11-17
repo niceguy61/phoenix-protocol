@@ -6,6 +6,7 @@ import { LambdaClient, paginateListFunctions } from '@aws-sdk/client-lambda';
 import { RDSClient, paginateDescribeDBInstances } from '@aws-sdk/client-rds';
 import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
+import { paginateGetResources, ResourceGroupsTaggingAPIClient } from '@aws-sdk/client-resource-groups-tagging-api';
 import { fromIni } from '@aws-sdk/credential-providers';
 import type { AwsInventoryReader, AwsResourceSummary } from './aws-inventory';
 
@@ -19,6 +20,7 @@ export function createAwsSdkInventoryReader(input: { profile: 'default' | 'sandb
   const dynamodb = new DynamoDBClient(config);
   const lambda = new LambdaClient(config);
   const sts = new STSClient(config);
+  const tagging = new ResourceGroupsTaggingAPIClient(config);
 
   return {
     async getCallerIdentity() {
@@ -66,6 +68,11 @@ export function createAwsSdkInventoryReader(input: { profile: 'default' | 'sandb
     async listLambdaFunctions() {
       const resources: AwsResourceSummary[] = [];
       for await (const page of paginateListFunctions({ client: lambda }, {})) for (const fn of page.Functions ?? []) if (fn.FunctionArn) resources.push({ id: fn.FunctionArn, kind: 'lambda-function', status: 'active', name: fn.FunctionName, metadata: { runtime: fn.Runtime ?? '' } });
+      return resources;
+    },
+    async listTaggedResources() {
+      const resources: AwsResourceSummary[] = [];
+      for await (const page of paginateGetResources({ client: tagging }, {})) for (const mapping of page.ResourceTagMappingList ?? []) if (mapping.ResourceARN) resources.push({ id: mapping.ResourceARN, kind: 'tagged-resource', status: 'tagged', metadata: Object.fromEntries((mapping.Tags ?? []).filter((tag) => tag.Key).map((tag) => [tag.Key as string, tag.Value ?? ''])) });
       return resources;
     },
   };

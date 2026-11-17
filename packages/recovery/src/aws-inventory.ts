@@ -16,6 +16,7 @@ export interface AwsInventoryReader {
   listS3Buckets(): Promise<AwsResourceSummary[]>;
   listDynamoDbTables(): Promise<AwsResourceSummary[]>;
   listLambdaFunctions(): Promise<AwsResourceSummary[]>;
+  listTaggedResources?(): Promise<AwsResourceSummary[]>;
 }
 
 export interface AwsInventoryInput {
@@ -28,6 +29,7 @@ export interface AwsInventorySnapshot {
   region: AwsInventoryInput['region'];
   accountId: string;
   collectedAt: string;
+  coverage: { taggedResourceCount: number; limitations: string[] };
   resources: AwsResourceSummary[];
 }
 
@@ -45,13 +47,19 @@ export async function collectAwsInventory(
     reader.listS3Buckets(),
     reader.listDynamoDbTables(),
     reader.listLambdaFunctions(),
+    reader.listTaggedResources?.() ?? Promise.resolve([]),
   ])).flat();
+  const taggedResourceCount = resources.filter((resource) => resource.kind === 'tagged-resource').length;
 
   return {
     profile: input.profile,
     region: input.region,
     accountId: identity.accountId,
     collectedAt: new Date().toISOString(),
+    coverage: {
+      taggedResourceCount,
+      limitations: ['Service-specific queries cover the initial MVP set; tagged resources extend coverage. Untagged resources may require service-specific readers.'],
+    },
     resources,
   };
 }
