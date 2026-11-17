@@ -12,6 +12,10 @@ test('resolves a public repository and renders the pinned snapshot', async ({ pa
   await expect(page.getByRole('status')).toContainText('niceguy61/phoenix-protocol');
   await expect(page.getByLabel('Analysis result')).toContainText('resources');
   await expect(page.getByLabel('Analysis result')).toContainText('blueprint steps');
+  await page.getByRole('button', { name: 'Create mock recovery session' }).click();
+  await page.getByRole('button', { name: 'Approve mock execution' }).click();
+  await page.getByRole('button', { name: 'Run mock recovery' }).click();
+  await expect(page.getByText('RECOVERY VERIFIED')).toBeVisible({ timeout: 10_000 });
 });
 
 test('renders an actionable API error state', async ({ page }) => {

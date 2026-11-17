@@ -88,3 +88,12 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .analysis-overview strong { color: var(--text); font-size: 1.25rem; font-weight: 600; letter-spacing: -0.04em; }
 .analysis-overview span { color: var(--dim); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; }
 @media (max-width: 520px) { .analysis-overview { grid-template-columns: repeat(2, 1fr); } }
+
+.secondary-button { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 12px; border: 1px solid var(--line-strong); background: transparent; color: var(--text); padding: 12px 14px; font-size: 0.75rem; font-weight: 800; }
+.secondary-button:hover { border-color: var(--accent); color: var(--accent); }
+.recovery-card { display: grid; gap: 12px; margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+.recovery-card-header { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.recovery-card-header strong { color: var(--accent); font-size: 0.68rem; }
+.recovery-result { margin: 0; border-left: 2px solid; padding: 10px 12px; font-size: 0.72rem; font-weight: 800; }
+.recovery-result.pass { border-color: var(--success); color: var(--success); background: rgba(183,230,154,0.06); }
+.recovery-result.fail { border-color: var(--danger); color: var(--danger); background: rgba(255,155,144,0.06); }

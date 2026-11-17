@@ -55,6 +55,39 @@ describe('createApiServer', () => {
     expect(payload.blueprint.steps).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'terraform-apply', approvalRequired: true })]));
   });
 
+  it('runs the approved mock recovery flow and returns verification/report evidence', async () => {
+    const repositoryClient: RepositoryClient = {
+      resolveSnapshot: async () => snapshot,
+      getTerraformFiles: async () => [{ path: 'main.tf', content: 'resource "aws_vpc" "main" { cidr_block = "10.0.0.0/16" }' }],
+    };
+    const server = createApiServer({ repositoryClient }).listen(0);
+    servers.push(server);
+
+    const analysisResponse = await request(server, '/api/analyses', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ repositoryUrl: 'https://github.com/niceguy61/phoenix-protocol', ref: 'feature/initial-scaffold', terraformRoot: '.' }),
+    });
+    const analysis = await analysisResponse.json();
+    const sessionResponse = await request(server, '/api/recovery-sessions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ analysisId: analysis.analysisId }),
+    });
+    const session = await sessionResponse.json();
+    expect(session.session.status).toBe('awaiting-approval');
+
+    await request(server, `/api/recovery-sessions/${session.sessionId}/approve`, { method: 'POST' });
+    const runResponse = await request(server, `/api/recovery-sessions/${session.sessionId}/run`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scenario: 'success' }),
+    });
+    const run = await runResponse.json();
+
+    expect(run.verification.recoveryVerified).toBe(true);
+    expect(run.report.report.status).toBe('recovery-verified');
+  });
   it('returns structured validation errors for invalid analysis input', async () => {
     const repositoryClient: RepositoryClient = { resolveSnapshot: async () => snapshot };
     const server = createApiServer({ repositoryClient }).listen(0);

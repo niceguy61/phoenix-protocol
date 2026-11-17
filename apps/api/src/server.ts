@@ -3,13 +3,24 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { GitHubRepositoryClient, type RepositorySnapshot, type RepositorySourceFile } from '@phoenix/repository';
 import { analyzeTerraform, buildDependencyGraph, type TerraformAnalysis } from '@phoenix/analyzer';
-import { analyzeRecoveryRisks, createRecoveryBlueprint, type RiskAnalysisResult } from '@phoenix/recovery';
+import {
+  analyzeRecoveryRisks,
+  createRecoveryBlueprint,
+  generateEvidenceReport,
+  MockRecoveryRunner,
+  runVerification,
+  type RiskAnalysisResult,
+  type VerificationResult,
+} from '@phoenix/recovery';
 
 const AnalysisInputSchema = z.object({
   repositoryUrl: z.string().url(),
   ref: z.string().min(1).max(256),
   terraformRoot: z.string().min(1).max(512),
 });
+
+const RecoveryCreateInputSchema = z.object({ analysisId: z.string().min(1) });
+const RecoveryRunInputSchema = z.object({ scenario: z.enum(['success', 'plan-failure', 'apply-failure']).optional() });
 
 type AnalysisRecord = {
   analysisId: string;
@@ -20,6 +31,15 @@ type AnalysisRecord = {
   risks: RiskAnalysisResult;
   blueprint: ReturnType<typeof createRecoveryBlueprint> | null;
   blueprintError?: string;
+};
+
+type RecoveryRecord = {
+  sessionId: string;
+  analysisId: string;
+  session: ReturnType<MockRecoveryRunner['createSession']>;
+  execution?: Awaited<ReturnType<MockRecoveryRunner['execute']>>;
+  verification?: VerificationResult;
+  report?: ReturnType<typeof generateEvidenceReport>;
 };
 
 export interface RepositoryClient {
@@ -37,11 +57,13 @@ export interface ApiServerOptions {
 
 export function createApiServer(options: ApiServerOptions = {}): Server {
   const repositoryClient = options.repositoryClient ?? new GitHubRepositoryClient();
+  const runner = new MockRecoveryRunner();
   const analyses = new Map<string, AnalysisRecord>();
+  const recoveries = new Map<string, RecoveryRecord>();
 
   return createServer(async (request, response) => {
     try {
-      await route(request, response, repositoryClient, analyses);
+      await route(request, response, repositoryClient, runner, analyses, recoveries);
     } catch (error) {
       sendJson(response, 500, {
         error: {
@@ -57,7 +79,9 @@ async function route(
   request: IncomingMessage,
   response: ServerResponse,
   repositoryClient: RepositoryClient,
+  runner: MockRecoveryRunner,
   analyses: Map<string, AnalysisRecord>,
+  recoveries: Map<string, RecoveryRecord>,
 ): Promise<void> {
   const method = request.method ?? 'GET';
   const path = new URL(request.url ?? '/', 'http://localhost').pathname;
@@ -118,6 +142,100 @@ async function route(
     return;
   }
 
+  if (method === 'POST' && path === '/api/recovery-sessions') {
+    const body = RecoveryCreateInputSchema.safeParse(await readJson(request));
+    if (!body.success) {
+      sendJson(response, 422, { error: { code: 'VALIDATION_ERROR', message: 'Invalid recovery session input' } });
+      return;
+    }
+    const analysis = analyses.get(body.data.analysisId);
+    if (!analysis) return sendJson(response, 404, notFound('Analysis'));
+    if (!analysis.blueprint) {
+      return sendJson(response, 409, { error: { code: 'BLUEPRINT_UNAVAILABLE', message: analysis.blueprintError ?? 'Blueprint unavailable' } });
+    }
+    const session = runner.createSession({
+      sessionId: randomUUID(),
+      commitSha: analysis.snapshot.commitSha,
+    });
+    const recovery: RecoveryRecord = { sessionId: session.sessionId, analysisId: analysis.analysisId, session };
+    recoveries.set(session.sessionId, recovery);
+    sendJson(response, 201, recovery);
+    return;
+  }
+
+  const approveMatch = path.match(/^\/api\/recovery-sessions\/([^/]+)\/approve$/);
+  if (method === 'POST' && approveMatch) {
+    const recovery = recoveries.get(approveMatch[1]);
+    if (!recovery) return sendJson(response, 404, notFound('Recovery session'));
+    recovery.session = runner.approve(recovery.sessionId);
+    sendJson(response, 200, recovery);
+    return;
+  }
+
+  const runMatch = path.match(/^\/api\/recovery-sessions\/([^/]+)\/run$/);
+  if (method === 'POST' && runMatch) {
+    const recovery = recoveries.get(runMatch[1]);
+    if (!recovery) return sendJson(response, 404, notFound('Recovery session'));
+    const body = RecoveryRunInputSchema.safeParse(await readJson(request));
+    if (!body.success) return sendJson(response, 422, { error: { code: 'VALIDATION_ERROR', message: 'Invalid recovery scenario' } });
+    const analysis = analyses.get(recovery.analysisId);
+    if (!analysis || !analysis.blueprint) return sendJson(response, 409, { error: { code: 'BLUEPRINT_UNAVAILABLE', message: 'Blueprint unavailable' } });
+
+    recovery.execution = await runner.execute(recovery.sessionId, body.data.scenario ?? 'success');
+    recovery.session = recovery.execution.session;
+    const verification = await runVerification({
+      sessionId: recovery.sessionId,
+      checks: [
+        {
+          id: 'terraform-apply', layer: 'infrastructure', required: true,
+          run: async () => recovery.execution?.failure
+            ? { status: 'failed', message: recovery.execution.failure.message, evidence: [] }
+            : { status: 'passed', message: 'Mock Terraform apply completed', evidence: [] },
+        },
+        {
+          id: 'http-health', layer: 'application', required: true,
+          run: async () => recovery.execution?.failure
+            ? { status: 'unverified', message: 'Application was not available after failed execution', evidence: [] }
+            : { status: 'passed', message: 'Mock HTTP health check returned 200', evidence: [] },
+        },
+      ],
+    });
+    recovery.verification = verification;
+    const observedAt = new Date().toISOString();
+    recovery.report = generateEvidenceReport({
+      sessionId: recovery.sessionId,
+      repository: analysis.snapshot.repository,
+      commitSha: analysis.snapshot.commitSha,
+      graph: analysis.graph,
+      findings: analysis.risks.findings,
+      blueprint: analysis.blueprint,
+      execution: recovery.session,
+      verification,
+      evidenceRefs: [{ sourceType: 'execution-log', locator: `session:${recovery.sessionId}`, sessionId: recovery.sessionId, observedAt }],
+      generatedAt: observedAt,
+      actualDurationSeconds: 0,
+    });
+    sendJson(response, 200, recovery);
+    return;
+  }
+
+  const verificationMatch = path.match(/^\/api\/recovery-sessions\/([^/]+)\/verification$/);
+  if (method === 'GET' && verificationMatch) {
+    const recovery = recoveries.get(verificationMatch[1]);
+    if (!recovery) return sendJson(response, 404, notFound('Recovery session'));
+    sendJson(response, 200, recovery.verification ?? { status: 'not-run' });
+    return;
+  }
+
+  const reportMatch = path.match(/^\/api\/recovery-sessions\/([^/]+)\/report$/);
+  if (method === 'GET' && reportMatch) {
+    const recovery = recoveries.get(reportMatch[1]);
+    if (!recovery) return sendJson(response, 404, notFound('Recovery session'));
+    if (!recovery.report) return sendJson(response, 409, { error: { code: 'REPORT_UNAVAILABLE', message: 'Recovery has not been run' } });
+    sendJson(response, 200, recovery.report);
+    return;
+  }
+
   const graphMatch = path.match(/^\/api\/analyses\/([^/]+)\/graph$/);
   if (method === 'GET' && graphMatch) {
     const analysis = analyses.get(graphMatch[1]);
@@ -145,10 +263,7 @@ async function route(
   const analysisMatch = path.match(/^\/api\/analyses\/([^/]+)$/);
   if (method === 'GET' && analysisMatch) {
     const analysis = analyses.get(analysisMatch[1]);
-    if (!analysis) {
-      sendJson(response, 404, notFound('Analysis'));
-      return;
-    }
+    if (!analysis) return sendJson(response, 404, notFound('Analysis'));
     sendJson(response, 200, analysis);
     return;
   }

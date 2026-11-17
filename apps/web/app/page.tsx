@@ -18,6 +18,13 @@ type AnalysisResponse = {
   blueprint: { steps: Array<{ id: string; approvalRequired: boolean }> } | null;
 };
 
+type RecoveryResponse = {
+  sessionId: string;
+  session: { status: 'awaiting-approval' | 'approved' | 'running' | 'verifying' | 'failed' | 'cleaned' };
+  verification?: { recoveryVerified: boolean; requiredPassed: number; requiredTotal: number };
+  report?: { report: { status: string } };
+};
+
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:4000';
 
 export default function HomePage() {
@@ -27,11 +34,68 @@ export default function HomePage() {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recovery, setRecovery] = useState<RecoveryResponse | null>(null);
+  const [isRecoveryActionPending, setIsRecoveryActionPending] = useState(false);
+
+  async function createRecoverySession() {
+    if (!analysis) return;
+    setError('');
+    setIsRecoveryActionPending(true);
+    try {
+      const response = await fetch(`${apiBase}/api/recovery-sessions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ analysisId: analysis.analysisId }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message ?? 'Recovery session could not be created.');
+      setRecovery(payload as RecoveryResponse);
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Recovery session could not be created.');
+    } finally {
+      setIsRecoveryActionPending(false);
+    }
+  }
+
+  async function approveRecoverySession() {
+    if (!recovery) return;
+    setIsRecoveryActionPending(true);
+    try {
+      const response = await fetch(`${apiBase}/api/recovery-sessions/${recovery.sessionId}/approve`, { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message ?? 'Recovery approval failed.');
+      setRecovery(payload as RecoveryResponse);
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Recovery approval failed.');
+    } finally {
+      setIsRecoveryActionPending(false);
+    }
+  }
+
+  async function runRecoverySession() {
+    if (!recovery) return;
+    setIsRecoveryActionPending(true);
+    try {
+      const response = await fetch(`${apiBase}/api/recovery-sessions/${recovery.sessionId}/run`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ scenario: 'success' }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message ?? 'Recovery execution failed.');
+      setRecovery(payload as RecoveryResponse);
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'Recovery execution failed.');
+    } finally {
+      setIsRecoveryActionPending(false);
+    }
+  }
 
   async function submitAnalysis(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     setAnalysis(null);
+    setRecovery(null);
     setIsSubmitting(true);
     try {
       const response = await fetch(`${apiBase}/api/analyses`, {
@@ -119,6 +183,20 @@ export default function HomePage() {
                 <div><strong>{analysis.risks.findings.length}</strong><span>risk findings</span></div>
                 <div><strong>{analysis.blueprint?.steps.length ?? 0}</strong><span>blueprint steps</span></div>
               </div>
+              {!recovery && (
+                <button className="secondary-button" type="button" onClick={createRecoverySession} disabled={isRecoveryActionPending || !analysis.blueprint}>
+                  {isRecoveryActionPending ? 'Creating session…' : 'Create mock recovery session'}
+                  <span aria-hidden="true">→</span>
+                </button>
+              )}
+              {recovery && (
+                <div className="recovery-card" role="region" aria-label="Recovery session">
+                  <div className="recovery-card-header"><span>Recovery session</span><strong>{recovery.session.status}</strong></div>
+                  {recovery.session.status === 'awaiting-approval' && <button className="secondary-button" type="button" onClick={approveRecoverySession} disabled={isRecoveryActionPending}>Approve mock execution</button>}
+                  {recovery.session.status === 'approved' && <button className="primary-button" type="button" onClick={runRecoverySession} disabled={isRecoveryActionPending}>Run mock recovery <span aria-hidden="true">→</span></button>}
+                  {recovery.verification && <p className={recovery.verification.recoveryVerified ? 'recovery-result pass' : 'recovery-result fail'}>{recovery.verification.recoveryVerified ? 'RECOVERY VERIFIED' : `Verification incomplete · ${recovery.verification.requiredPassed}/${recovery.verification.requiredTotal} required checks passed`}</p>}
+                </div>
+              )}
             </>
           )}
         </article>
