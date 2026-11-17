@@ -22,7 +22,7 @@ type AnalysisResponse = {
 type NimEvaluationResponse = {
   model: string;
   promptVersion: string;
-  results: Array<{ name: string; passed: boolean; violations: string[] }>;
+  results: Array<{ name: string; passed: boolean; expectedOutcome: 'accept' | 'block'; observedOutcome: 'accepted' | 'blocked'; violations: string[] }>;
   summary: { passed: boolean; total: number; passedCount: number; failedCases: string[] };
 };
 
@@ -283,7 +283,7 @@ export default function HomePage() {
             <article className="panel detail-panel full-width">
               <div className="panel-heading"><div><div className="section-label">AI contract evaluation</div><h2>NVIDIA NIM</h2></div><span className={`step-index ${nimEvaluation.summary.passed ? '' : 'muted'}`}>{nimEvaluation.summary.passedCount}/{nimEvaluation.summary.total} passed</span></div>
               <ul className="verification-list">
-                {nimEvaluation.results.map((result) => <li key={result.name}><span>{result.name}</span><strong className={result.passed ? 'check-pass' : 'check-fail'}>{result.passed ? 'passed' : 'blocked'}</strong><small>{result.violations.join(' ') || 'Schema, grounding, separation, and safety checks passed.'}</small></li>)}
+                {nimEvaluation.results.map((result) => <li key={result.name}><span>{result.name}</span><strong className={result.passed ? 'check-pass' : 'check-fail'}>{result.observedOutcome === 'blocked' ? 'blocked as expected' : result.passed ? 'passed' : 'failed'}</strong><small>{result.violations.join(' ') || 'Schema, grounding, separation, and safety checks passed.'}</small></li>)}
               </ul>
               <p className="detail-muted">Model: {nimEvaluation.model} · Prompt: {nimEvaluation.promptVersion}</p>
             </article>

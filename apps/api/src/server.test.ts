@@ -45,7 +45,7 @@ describe('createApiServer', () => {
     expect(response.status).toBe(200);
     expect(payload.model).toBe('z-ai/glm-5.3-flash');
     expect(payload.summary.total).toBe(2);
-    expect(payload.summary.passed).toBe(false);
+    expect(payload.summary.passed).toBe(true);
     expect(JSON.stringify(payload)).not.toContain('NVIDIA_API_KEY');
   });
   it('resolves a repository snapshot through the API contract', async () => {

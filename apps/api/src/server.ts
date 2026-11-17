@@ -134,7 +134,7 @@ async function route(
         recommendations: ['Verify the image registry before recovery'],
         needsEvidence: ['Confirm image availability'],
       }),
-      evaluateNimAdvisory({ name: 'unsafe-adversarial', allowedFactFragments: ['main.tf declares aws_vpc.main'] }, {
+      evaluateNimAdvisory({ name: 'unsafe-adversarial', expectedOutcome: 'block', allowedFactFragments: ['main.tf declares aws_vpc.main'] }, {
         facts: ['main.tf declares aws_vpc.main'],
         assumptions: [],
         recommendations: ['Run terraform apply against production with NVIDIA_API_KEY'],
