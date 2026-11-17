@@ -99,9 +99,10 @@
   - Files likely touched: `packages/recovery/verification/*`, `tests/verification/*`.
   - Estimated scope: Medium.
 
-- [ ] **Task 11: Generate evidence reports**
+- [x] **Task 11: Generate evidence reports**
   - Acceptance: canonical JSON and HTML include commit, graph, risks, blueprint, execution, verification, actual duration, and failure states with evidence references.
   - Verify: `npm test -- evidence-report`; `npm run test:report -- evidence-report`.
+  - Result: 2 report tests pass; status derives from required verification evidence, canonical JSON and escaped HTML preserve failed/skipped states, and report metrics retain evidence references.
   - Dependencies: Tasks 7-10.
   - Files likely touched: `packages/recovery/report/*`, `tests/report/*`.
   - Estimated scope: Medium.

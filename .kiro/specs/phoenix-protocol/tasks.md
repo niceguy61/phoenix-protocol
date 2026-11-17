@@ -85,9 +85,10 @@
   - Result: 4 verification tests pass; apply success cannot bypass application failure, skipped/unverified states remain visible, and thrown check errors do not stop later checks.
   - Depends on: 9.
 
-- [ ] **11. Implement evidence reports**
+- [x] **11. Implement evidence reports**
   - Acceptance: canonical JSON and HTML contain actual execution evidence, failures, skipped states, unverified states, and duration comparison.
   - Verify: `npm test -- evidence-report`; `npm run test:report -- evidence-report`.
+  - Result: 2 report tests pass; status derives from required verification evidence, canonical JSON and escaped HTML preserve failed/skipped states, and report metrics retain evidence references.
   - Depends on: 7, 8, 9, 10.
 
 ### Checkpoint: Mock recovery
